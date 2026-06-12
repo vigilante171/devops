@@ -12,7 +12,7 @@
       <p class="eyebrow">Secure DevOps Platform</p>
       <h2>Control pipelines, deployments and monitoring from one place.</h2>
       <p>
-        Built with Angular, Spring Boot microservices, Node.js realtime services and MongoDB.
+        Built with Angular, Spring Boot microservices, Node.js realtime services and MongoDB Atlas.
       </p>
 
       <div class="mini-grid">
@@ -38,15 +38,27 @@
       <h2>Sign in to your workspace</h2>
       <p class="muted">Use your DevOps account to access the dashboard.</p>
 
-      <form>
+      <form (ngSubmit)="login()">
         <label>
           Email address
-          <input type="email" placeholder="engineer@devops.com" />
+          <input
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            placeholder="engineer@devops.com"
+            required
+          />
         </label>
 
         <label>
           Password
-          <input type="password" placeholder="" />
+          <input
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            placeholder=""
+            required
+          />
         </label>
 
         <div class="form-row">
@@ -58,7 +70,17 @@
           <a href="#">Forgot password?</a>
         </div>
 
-        <a routerLink="/dashboard" class="submit-btn">Sign in securely</a>
+        <div class="alert error" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="alert success" *ngIf="successMessage">
+          {{ successMessage }}
+        </div>
+
+        <button class="submit-btn" type="submit" [disabled]="isLoading">
+          {{ isLoading ? 'Signing in...' : 'Sign in securely' }}
+        </button>
       </form>
 
       <p class="footer-text">

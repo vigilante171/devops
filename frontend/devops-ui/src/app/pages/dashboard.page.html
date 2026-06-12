@@ -60,7 +60,7 @@
   <main class="main-content">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Welcome back, Engineer</p>
+        <p class="eyebrow">Welcome back, {{ user?.fullName || "Engineer" }}</p>
         <h2>DevOps Operations Dashboard</h2>
       </div>
 
@@ -71,7 +71,7 @@
         </div>
 
         <button class="icon-btn"></button>
-        <button class="primary-btn">+ New Pipeline</button>
+        <button class="secondary-btn" (click)="logout()">Logout</button><button class="primary-btn">+ New Pipeline</button>
       </div>
     </header>
 
@@ -285,4 +285,5 @@
     </section>
   </main>
 </div>
+
 
