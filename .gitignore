@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+target/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.production
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Angular
+.angular/
+coverage/
+
+# Java
+.mvn/wrapper/maven-wrapper.jar
+
+# MongoDB
+*.lock
+
+# Security
+*.pem
+*.key
+*.crt

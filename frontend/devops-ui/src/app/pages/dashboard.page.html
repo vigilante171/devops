@@ -1,0 +1,288 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">D</div>
+      <div>
+        <h1>DevOps Center</h1>
+        <span>Enterprise Control Platform</span>
+      </div>
+    </div>
+
+    <nav class="menu">
+      <a class="menu-item active" href="#">
+        <span></span>
+        Dashboard
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Projects
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Pipelines
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Deployments
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Monitoring
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Alerts
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Users & Roles
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Audit Logs
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-card">
+      <p>System Status</p>
+      <strong>All services operational</strong>
+      <div class="status-line">
+        <span></span>
+        99.98% uptime
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Welcome back, Engineer</p>
+        <h2>DevOps Operations Dashboard</h2>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="search-box">
+          <span></span>
+          <input placeholder="Search projects, pipelines, deployments..." />
+        </div>
+
+        <button class="icon-btn"></button>
+        <button class="primary-btn">+ New Pipeline</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Live environment overview</p>
+        <h3>Build, monitor, secure and deploy from one command center.</h3>
+        <p>
+          Track pipelines, releases, services, alerts and team activity in real time with a secure microservices architecture.
+        </p>
+
+        <div class="hero-actions">
+          <button class="primary-btn">Run Deployment</button>
+          <button class="secondary-btn">View Logs</button>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <div class="pulse"></div>
+        <p>Production Health</p>
+        <strong>98.7%</strong>
+        <span>Stable  Last checked 12 seconds ago</span>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-icon blue"></span>
+        <p>Total Projects</p>
+        <strong>24</strong>
+        <small>+4 this month</small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-icon green"></span>
+        <p>Active Pipelines</p>
+        <strong>12</strong>
+        <small>8 running successfully</small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-icon purple"></span>
+        <p>Deployments</p>
+        <strong>156</strong>
+        <small>32 production releases</small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-icon red"></span>
+        <p>Open Alerts</p>
+        <strong>3</strong>
+        <small>1 critical incident</small>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="panel large-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Pipeline activity</p>
+            <h3>Current pipeline runs</h3>
+          </div>
+          <button class="small-btn">View all</button>
+        </div>
+
+        <div class="pipeline-list">
+          <div class="pipeline-item">
+            <div>
+              <strong>payment-api-build</strong>
+              <span>Build  Test  Security Scan  Deploy</span>
+            </div>
+            <div class="progress">
+              <div style="width: 82%"></div>
+            </div>
+            <span class="badge running">Running</span>
+          </div>
+
+          <div class="pipeline-item">
+            <div>
+              <strong>frontend-release</strong>
+              <span>Install  Lint  Build  Preview</span>
+            </div>
+            <div class="progress">
+              <div style="width: 100%"></div>
+            </div>
+            <span class="badge success">Success</span>
+          </div>
+
+          <div class="pipeline-item">
+            <div>
+              <strong>security-audit-job</strong>
+              <span>Dependency Scan  Secrets Scan  Report</span>
+            </div>
+            <div class="progress">
+              <div style="width: 42%"></div>
+            </div>
+            <span class="badge warning">Review</span>
+          </div>
+
+          <div class="pipeline-item">
+            <div>
+              <strong>inventory-service</strong>
+              <span>Compile  Unit Tests  Integration Tests</span>
+            </div>
+            <div class="progress">
+              <div style="width: 17%"></div>
+            </div>
+            <span class="badge failed">Failed</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Services</p>
+            <h3>Health status</h3>
+          </div>
+        </div>
+
+        <div class="health-list">
+          <div>
+            <span class="dot green"></span>
+            API Gateway
+            <strong>Healthy</strong>
+          </div>
+          <div>
+            <span class="dot green"></span>
+            Auth Service
+            <strong>Healthy</strong>
+          </div>
+          <div>
+            <span class="dot green"></span>
+            Pipeline Service
+            <strong>Healthy</strong>
+          </div>
+          <div>
+            <span class="dot yellow"></span>
+            Monitoring Service
+            <strong>Slow</strong>
+          </div>
+          <div>
+            <span class="dot red"></span>
+            Notification Service
+            <strong>Error</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Latest releases</p>
+            <h3>Deployments</h3>
+          </div>
+        </div>
+
+        <div class="release-list">
+          <div>
+            <strong>v2.4.1</strong>
+            <span>Production</span>
+            <em>Success</em>
+          </div>
+          <div>
+            <strong>v2.4.0</strong>
+            <span>Staging</span>
+            <em>Success</em>
+          </div>
+          <div>
+            <strong>v2.3.9</strong>
+            <span>Testing</span>
+            <em>Rollback ready</em>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel activity-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Audit stream</p>
+            <h3>Recent activity</h3>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div>
+            <span></span>
+            <p><strong>Admin</strong> approved production deployment.</p>
+            <small>2 minutes ago</small>
+          </div>
+
+          <div>
+            <span></span>
+            <p><strong>Pipeline</strong> completed frontend-release successfully.</p>
+            <small>9 minutes ago</small>
+          </div>
+
+          <div>
+            <span></span>
+            <p><strong>Security scan</strong> detected one dependency warning.</p>
+            <small>18 minutes ago</small>
+          </div>
+
+          <div>
+            <span></span>
+            <p><strong>User role</strong> updated for devops.engineer.</p>
+            <small>31 minutes ago</small>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
+
