@@ -1,0 +1,99 @@
+<div class="projects-shell">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Project Management</p>
+      <h1>DevOps Projects</h1>
+      <p>Manage repositories, environments and ownership from one secure place.</p>
+    </div>
+
+    <a class="back-link" href="/dashboard">Back to dashboard</a>
+  </header>
+
+  <section class="content-grid">
+    <article class="panel create-panel">
+      <p class="eyebrow">Create project</p>
+      <h2>New DevOps project</h2>
+
+      <form (ngSubmit)="createProject()">
+        <label>
+          Project name
+          <input name="name" [(ngModel)]="form.name" required />
+        </label>
+
+        <label>
+          Description
+          <textarea name="description" [(ngModel)]="form.description"></textarea>
+        </label>
+
+        <div class="two-cols">
+          <label>
+            Repository provider
+            <input name="provider" [(ngModel)]="form.repository.provider" />
+          </label>
+
+          <label>
+            Default branch
+            <input name="defaultBranch" [(ngModel)]="form.repository.defaultBranch" />
+          </label>
+        </div>
+
+        <label>
+          Repository URL
+          <input name="repositoryUrl" [(ngModel)]="form.repository.repositoryUrl" />
+        </label>
+
+        <label class="check">
+          <input
+            type="checkbox"
+            name="webhookEnabled"
+            [(ngModel)]="form.repository.webhookEnabled"
+          />
+          Enable webhook integration
+        </label>
+
+        <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+
+        <button class="primary-btn" type="submit" [disabled]="isCreating">
+          {{ isCreating ? 'Creating...' : '+ Create Project' }}
+        </button>
+      </form>
+    </article>
+
+    <article class="panel list-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Workspace projects</p>
+          <h2>My projects</h2>
+        </div>
+
+        <button class="secondary-btn" (click)="loadProjects()">Refresh</button>
+      </div>
+
+      <div class="loading" *ngIf="isLoading">Loading projects...</div>
+
+      <div class="empty" *ngIf="!isLoading && projects.length === 0">
+        No projects yet. Create your first DevOps project.
+      </div>
+
+      <div class="project-list" *ngIf="projects.length > 0">
+        <div class="project-card" *ngFor="let project of projects">
+          <div>
+            <h3>{{ project.name }}</h3>
+            <p>{{ project.description }}</p>
+
+            <div class="meta">
+              <span>{{ project.status }}</span>
+              <span>{{ project.repository.provider }}</span>
+              <span>{{ project.repository.defaultBranch }}</span>
+            </div>
+
+            <small>Owner: {{ project.ownerEmail }}</small>
+          </div>
+
+          <button class="danger-btn" (click)="deleteProject(project)">Delete</button>
+        </div>
+      </div>
+    </article>
+  </section>
+</div>
