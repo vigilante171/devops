@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { TokenService } from '../core/auth/services/token.service';
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
+  imports: [RouterLink],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss'
 })

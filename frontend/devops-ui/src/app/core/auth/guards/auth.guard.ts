@@ -6,7 +6,11 @@ export const authGuard: CanActivateFn = () => {
   const tokenService = inject(TokenService);
   const router = inject(Router);
 
-  if (tokenService.isAuthenticated()) {
+  const token = tokenService.getAccessToken();
+
+  console.log('AuthGuard token:', token);
+
+  if (token && token.length > 20) {
     return true;
   }
 
