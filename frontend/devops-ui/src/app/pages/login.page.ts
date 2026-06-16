@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 
 import { AuthService } from '../core/auth/services/auth.service';
 import { TokenService } from '../core/auth/services/token.service';
@@ -9,7 +9,7 @@ import { TokenService } from '../core/auth/services/token.service';
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './login.page.html',
   styleUrl: './login.page.scss'
 })
@@ -62,3 +62,4 @@ export class LoginPage {
     });
   }
 }
+

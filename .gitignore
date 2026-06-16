@@ -1,14 +1,12 @@
-# Dependencies
+# Node / Angular
 node_modules/
-target/
+.angular/
 dist/
-build/
+out/
 
-# Environment files
-.env
-.env.local
-.env.production
-*.env
+# Java / Maven
+target/
+*.class
 
 # IDE
 .idea/
@@ -19,21 +17,14 @@ build/
 logs/
 *.log
 
-# OS
-.DS_Store
-Thumbs.db
+# Env / secrets
+.env
+.env.*
+application-local.properties
 
-# Angular
-.angular/
-coverage/
-
-# Java
-.mvn/wrapper/maven-wrapper.jar
-
-# MongoDB
-*.lock
-
-# Security
-*.pem
-*.key
-*.crt
+# Local generated review files
+CODEBASE_FOR_REVIEW.txt
+FULL_CODEBASE_CONTEXT.txt
+PROJECT_CODE_CONTEXT.txt
+PROJECT_CODE_CONTEXT_SMALL.txt
+.git_backup_*/

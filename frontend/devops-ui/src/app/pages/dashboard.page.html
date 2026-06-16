@@ -9,47 +9,24 @@
     </div>
 
     <nav class="menu">
-      <a class="menu-item active" href="#">
-        <span></span>
-        Dashboard
-      </a>
+      <a class="menu-item active" routerLink="/dashboard"><span></span>Dashboard</a>
       <a class="menu-item" routerLink="/projects"><span></span>Projects</a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Pipelines
-      </a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Deployments
-      </a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Monitoring
-      </a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Alerts
-      </a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Users & Roles
-      </a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Audit Logs
-      </a>
-      <a class="menu-item" href="#">
-        <span></span>
-        Settings
-      </a>
+      <a class="menu-item" routerLink="/pipelines"><span></span>Pipelines</a>
+      <a class="menu-item" routerLink="/deployments"><span></span>Deployments</a>
+      <a class="menu-item" routerLink="/monitoring"><span></span>Monitoring</a>
+      <a class="menu-item" routerLink="/monitoring"><span></span>Alerts</a>
+      <a class="menu-item" routerLink="/audit"><span></span>Audit Logs</a>
+      <a class="menu-item" routerLink="/notifications"><span></span>Notifications</a>
     </nav>
 
     <div class="sidebar-card">
       <p>System Status</p>
-      <strong>All services operational</strong>
+      <strong>
+        {{ monitoringSummary?.downServices === 0 ? 'All services operational' : 'Some services need attention' }}
+      </strong>
       <div class="status-line">
         <span></span>
-        99.98% uptime
+        {{ productionHealth }}% health
       </div>
     </div>
   </aside>
@@ -67,8 +44,12 @@
           <input placeholder="Search projects, pipelines, deployments..." />
         </div>
 
-        <button class="icon-btn"></button>
-        <button class="secondary-btn" (click)="logout()">Logout</button><button class="primary-btn">+ New Pipeline</button>
+        <button class="secondary-btn" routerLink="/notifications">
+          Notifications {{ notificationSummary?.unread ? '(' + notificationSummary?.unread + ')' : '' }}
+        </button>
+
+        <button class="secondary-btn" (click)="logout()">Logout</button>
+        <button class="primary-btn" routerLink="/pipelines">+ New Pipeline</button>
       </div>
     </header>
 
@@ -77,50 +58,53 @@
         <p class="eyebrow">Live environment overview</p>
         <h3>Build, monitor, secure and deploy from one command center.</h3>
         <p>
-          Track pipelines, releases, services, alerts and team activity in real time with a secure microservices architecture.
+          Track projects, pipelines, deployments, service health, notifications and audit events using your Spring Boot microservices backend.
         </p>
 
         <div class="hero-actions">
-          <button class="primary-btn">Run Deployment</button>
-          <button class="secondary-btn">View Logs</button>
+          <button class="primary-btn" routerLink="/deployments">View Deployments</button>
+          <button class="secondary-btn" routerLink="/audit">View Audit Logs</button>
         </div>
       </div>
 
       <div class="hero-panel">
         <div class="pulse"></div>
-        <p>Production Health</p>
-        <strong>98.7%</strong>
-        <span>Stable  Last checked 12 seconds ago</span>
+        <p>Platform Health</p>
+        <strong>{{ productionHealth }}%</strong>
+        <span>
+          {{ monitoringSummary?.healthyServices || 0 }} healthy services 
+          {{ monitoringSummary?.openAlerts || 0 }} open alerts
+        </span>
       </div>
     </section>
 
     <section class="stats-grid">
-      <article class="stat-card">
+      <article class="stat-card" routerLink="/projects">
         <span class="stat-icon blue"></span>
         <p>Total Projects</p>
-        <strong>24</strong>
-        <small>+4 this month</small>
+        <strong>{{ totalProjects }}</strong>
+        <small>Loaded from project-service</small>
       </article>
 
-      <article class="stat-card">
+      <article class="stat-card" routerLink="/pipelines">
         <span class="stat-icon green"></span>
         <p>Active Pipelines</p>
-        <strong>12</strong>
-        <small>8 running successfully</small>
+        <strong>{{ activePipelines }}</strong>
+        <small>{{ runs.length }} recent runs</small>
       </article>
 
-      <article class="stat-card">
+      <article class="stat-card" routerLink="/deployments">
         <span class="stat-icon purple"></span>
         <p>Deployments</p>
-        <strong>156</strong>
-        <small>32 production releases</small>
+        <strong>{{ totalDeployments }}</strong>
+        <small>Deployment history</small>
       </article>
 
-      <article class="stat-card">
+      <article class="stat-card" routerLink="/monitoring">
         <span class="stat-icon red"></span>
         <p>Open Alerts</p>
-        <strong>3</strong>
-        <small>1 critical incident</small>
+        <strong>{{ openAlerts }}</strong>
+        <small>{{ monitoringSummary?.criticalOpenAlerts || 0 }} critical</small>
       </article>
     </section>
 
@@ -131,54 +115,33 @@
             <p class="eyebrow">Pipeline activity</p>
             <h3>Current pipeline runs</h3>
           </div>
-          <button class="small-btn">View all</button>
+          <button class="small-btn" routerLink="/pipelines">View all</button>
         </div>
 
-        <div class="pipeline-list">
-          <div class="pipeline-item">
+        <div class="pipeline-list" *ngIf="runs.length > 0; else noRuns">
+          <div class="pipeline-item" *ngFor="let run of runs">
             <div>
-              <strong>payment-api-build</strong>
-              <span>Build  Test  Security Scan  Deploy</span>
+              <strong>{{ run.pipelineName }}</strong>
+              <span>{{ run.branch }}  {{ run.commitSha || 'No commit' }}</span>
             </div>
-            <div class="progress">
-              <div style="width: 82%"></div>
-            </div>
-            <span class="badge running">Running</span>
-          </div>
 
-          <div class="pipeline-item">
-            <div>
-              <strong>frontend-release</strong>
-              <span>Install  Lint  Build  Preview</span>
-            </div>
             <div class="progress">
-              <div style="width: 100%"></div>
+              <div [style.width]="run.status === 'SUCCESS' ? '100%' : run.status === 'RUNNING' ? '68%' : '35%'"></div>
             </div>
-            <span class="badge success">Success</span>
-          </div>
 
-          <div class="pipeline-item">
-            <div>
-              <strong>security-audit-job</strong>
-              <span>Dependency Scan  Secrets Scan  Report</span>
-            </div>
-            <div class="progress">
-              <div style="width: 42%"></div>
-            </div>
-            <span class="badge warning">Review</span>
-          </div>
-
-          <div class="pipeline-item">
-            <div>
-              <strong>inventory-service</strong>
-              <span>Compile  Unit Tests  Integration Tests</span>
-            </div>
-            <div class="progress">
-              <div style="width: 17%"></div>
-            </div>
-            <span class="badge failed">Failed</span>
+            <span class="badge"
+                  [class.success]="run.status === 'SUCCESS'"
+                  [class.running]="run.status === 'RUNNING'"
+                  [class.failed]="run.status === 'FAILED'"
+                  [class.warning]="run.status !== 'SUCCESS' && run.status !== 'RUNNING' && run.status !== 'FAILED'">
+              {{ run.status }}
+            </span>
           </div>
         </div>
+
+        <ng-template #noRuns>
+          <p class="empty-state">No pipeline runs yet.</p>
+        </ng-template>
       </article>
 
       <article class="panel">
@@ -189,33 +152,20 @@
           </div>
         </div>
 
-        <div class="health-list">
-          <div>
-            <span class="dot green"></span>
-            API Gateway
-            <strong>Healthy</strong>
-          </div>
-          <div>
-            <span class="dot green"></span>
-            Auth Service
-            <strong>Healthy</strong>
-          </div>
-          <div>
-            <span class="dot green"></span>
-            Pipeline Service
-            <strong>Healthy</strong>
-          </div>
-          <div>
-            <span class="dot yellow"></span>
-            Monitoring Service
-            <strong>Slow</strong>
-          </div>
-          <div>
-            <span class="dot red"></span>
-            Notification Service
-            <strong>Error</strong>
+        <div class="health-list" *ngIf="health.length > 0; else noHealth">
+          <div *ngFor="let item of health">
+            <span class="dot"
+                  [class.green]="item.status === 'HEALTHY'"
+                  [class.yellow]="item.status === 'DEGRADED'"
+                  [class.red]="item.status === 'DOWN'"></span>
+            {{ item.serviceName }}
+            <strong>{{ item.status }}</strong>
           </div>
         </div>
+
+        <ng-template #noHealth>
+          <p class="empty-state">No health data yet.</p>
+        </ng-template>
       </article>
 
       <article class="panel">
@@ -226,23 +176,17 @@
           </div>
         </div>
 
-        <div class="release-list">
-          <div>
-            <strong>v2.4.1</strong>
-            <span>Production</span>
-            <em>Success</em>
-          </div>
-          <div>
-            <strong>v2.4.0</strong>
-            <span>Staging</span>
-            <em>Success</em>
-          </div>
-          <div>
-            <strong>v2.3.9</strong>
-            <span>Testing</span>
-            <em>Rollback ready</em>
+        <div class="release-list" *ngIf="deployments.length > 0; else noDeployments">
+          <div *ngFor="let deployment of deployments">
+            <strong>{{ deployment.version }}</strong>
+            <span>{{ deployment.environment }}</span>
+            <em>{{ deployment.status }}</em>
           </div>
         </div>
+
+        <ng-template #noDeployments>
+          <p class="empty-state">No deployments yet.</p>
+        </ng-template>
       </article>
 
       <article class="panel activity-panel">
@@ -251,33 +195,20 @@
             <p class="eyebrow">Audit stream</p>
             <h3>Recent activity</h3>
           </div>
+          <button class="small-btn" routerLink="/audit">View all</button>
         </div>
 
-        <div class="timeline">
-          <div>
+        <div class="timeline" *ngIf="auditEvents.length > 0; else noAudit">
+          <div *ngFor="let event of auditEvents">
             <span></span>
-            <p><strong>Admin</strong> approved production deployment.</p>
-            <small>2 minutes ago</small>
-          </div>
-
-          <div>
-            <span></span>
-            <p><strong>Pipeline</strong> completed frontend-release successfully.</p>
-            <small>9 minutes ago</small>
-          </div>
-
-          <div>
-            <span></span>
-            <p><strong>Security scan</strong> detected one dependency warning.</p>
-            <small>18 minutes ago</small>
-          </div>
-
-          <div>
-            <span></span>
-            <p><strong>User role</strong> updated for devops.engineer.</p>
-            <small>31 minutes ago</small>
+            <p><strong>{{ event.actorEmail }}</strong> {{ event.message || event.action }}</p>
+            <small>{{ event.serviceName }}  {{ event.severity }}</small>
           </div>
         </div>
+
+        <ng-template #noAudit>
+          <p class="empty-state">No audit events yet.</p>
+        </ng-template>
       </article>
     </section>
   </main>

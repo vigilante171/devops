@@ -1,0 +1,37 @@
+<div class="page">
+  <header>
+    <div>
+      <p class="eyebrow">Observability</p>
+      <h1>Monitoring</h1>
+      <span>Service health, alerts and operational status.</span>
+    </div>
+    <a routerLink="/dashboard">Back to dashboard</a>
+  </header>
+
+  <div class="alert" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <section class="stats" *ngIf="summary">
+    <article><strong>{{ summary.totalServices }}</strong><span>Total services</span></article>
+    <article><strong>{{ summary.healthyServices }}</strong><span>Healthy</span></article>
+    <article><strong>{{ summary.degradedServices }}</strong><span>Degraded</span></article>
+    <article><strong>{{ summary.openAlerts }}</strong><span>Open alerts</span></article>
+  </section>
+
+  <section class="panel">
+    <h2>Service health</h2>
+    <div class="row" *ngFor="let item of health">
+      <strong>{{ item.serviceName }}</strong>
+      <span>{{ item.status }}</span>
+      <small>{{ item.responseTimeMs }} ms</small>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Alerts</h2>
+    <div class="row" *ngFor="let alert of alerts">
+      <strong>{{ alert.title }}</strong>
+      <span>{{ alert.severity }}</span>
+      <button (click)="resolveAlert(alert.id)">Resolve</button>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,27 @@
+<div class="page">
+  <header>
+    <div>
+      <p class="eyebrow">Governance</p>
+      <h1>Audit Logs</h1>
+      <span>Trace user actions, deployments, alerts and system events.</span>
+    </div>
+    <a routerLink="/dashboard">Back to dashboard</a>
+  </header>
+
+  <div class="alert" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <section class="stats" *ngIf="summary">
+    <article><strong>{{ summary.totalEvents }}</strong><span>Total events</span></article>
+    <article><strong>{{ summary.deploymentEvents }}</strong><span>Deployments</span></article>
+    <article><strong>{{ summary.rollbackEvents }}</strong><span>Rollbacks</span></article>
+    <article><strong>{{ summary.pipelineRunEvents }}</strong><span>Pipeline runs</span></article>
+  </section>
+
+  <section class="panel">
+    <div class="row" *ngFor="let event of events">
+      <strong>{{ event.action }}</strong>
+      <span>{{ event.serviceName }}</span>
+      <small>{{ event.message }}</small>
+    </div>
+  </section>
+</div>

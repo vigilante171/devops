@@ -1,99 +1,133 @@
-<div class="projects-shell">
+<div class="page">
   <header class="page-header">
     <div>
       <p class="eyebrow">Project Management</p>
-      <h1>DevOps Projects</h1>
-      <p>Manage repositories, environments and ownership from one secure place.</p>
+      <h1>Projects</h1>
+      <span>Create, organize and track DevOps projects connected to repositories and environments.</span>
     </div>
 
-    <a class="back-link" href="/dashboard">Back to dashboard</a>
+    <div class="header-actions">
+      <button class="secondary-btn" routerLink="/dashboard">Dashboard</button>
+      <button class="primary-btn" (click)="loadProjects()">Refresh</button>
+    </div>
   </header>
 
-  <section class="content-grid">
-    <article class="panel create-panel">
-      <p class="eyebrow">Create project</p>
-      <h2>New DevOps project</h2>
+  <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <section class="layout">
+    <article class="form-card">
+      <div class="section-title">
+        <p class="eyebrow">New project</p>
+        <h2>Create a project</h2>
+      </div>
 
       <form (ngSubmit)="createProject()">
         <label>
           Project name
-          <input name="name" [(ngModel)]="form.name" required />
+          <input name="name" [(ngModel)]="name" placeholder="Payment Platform" />
         </label>
 
         <label>
           Description
-          <textarea name="description" [(ngModel)]="form.description"></textarea>
+          <textarea name="description" [(ngModel)]="description" rows="4"></textarea>
         </label>
 
         <div class="two-cols">
           <label>
             Repository provider
-            <input name="provider" [(ngModel)]="form.repository.provider" />
+            <select name="provider" [(ngModel)]="provider">
+              <option value="GITHUB">GitHub</option>
+              <option value="GITLAB">GitLab</option>
+              <option value="BITBUCKET">Bitbucket</option>
+            </select>
           </label>
 
           <label>
             Default branch
-            <input name="defaultBranch" [(ngModel)]="form.repository.defaultBranch" />
+            <input name="defaultBranch" [(ngModel)]="defaultBranch" placeholder="main" />
           </label>
         </div>
 
         <label>
           Repository URL
-          <input name="repositoryUrl" [(ngModel)]="form.repository.repositoryUrl" />
+          <input name="repositoryUrl" [(ngModel)]="repositoryUrl" placeholder="https://github.com/org/repo" />
         </label>
 
         <label class="check">
-          <input
-            type="checkbox"
-            name="webhookEnabled"
-            [(ngModel)]="form.repository.webhookEnabled"
-          />
-          Enable webhook integration
+          <input type="checkbox" name="webhookEnabled" [(ngModel)]="webhookEnabled" />
+          Enable repository webhook
         </label>
 
-        <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
-        <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+        <div class="section-title small">
+          <p class="eyebrow">Environments</p>
+          <h2>Deployment URLs</h2>
+        </div>
 
-        <button class="primary-btn" type="submit" [disabled]="isCreating">
-          {{ isCreating ? 'Creating...' : '+ Create Project' }}
+        <label>
+          Development URL
+          <input name="devUrl" [(ngModel)]="devUrl" />
+        </label>
+
+        <label>
+          Staging URL
+          <input name="stagingUrl" [(ngModel)]="stagingUrl" />
+        </label>
+
+        <label>
+          Production URL
+          <input name="productionUrl" [(ngModel)]="productionUrl" />
+        </label>
+
+        <button class="primary-btn full" type="submit" [disabled]="isCreating">
+          {{ isCreating ? 'Creating project...' : 'Create project' }}
         </button>
       </form>
     </article>
 
-    <article class="panel list-panel">
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">Workspace projects</p>
-          <h2>My projects</h2>
-        </div>
-
-        <button class="secondary-btn" (click)="loadProjects()">Refresh</button>
+    <section class="projects-panel">
+      <div class="section-title">
+        <p class="eyebrow">Workspace</p>
+        <h2>Existing projects</h2>
       </div>
 
       <div class="loading" *ngIf="isLoading">Loading projects...</div>
 
       <div class="empty" *ngIf="!isLoading && projects.length === 0">
-        No projects yet. Create your first DevOps project.
+        No projects yet. Create your first project from the form.
       </div>
 
-      <div class="project-list" *ngIf="projects.length > 0">
-        <div class="project-card" *ngFor="let project of projects">
-          <div>
-            <h3>{{ project.name }}</h3>
-            <p>{{ project.description }}</p>
-
-            <div class="meta">
-              <span>{{ project.status }}</span>
-              <span>{{ project.repository.provider }}</span>
-              <span>{{ project.repository.defaultBranch }}</span>
+      <div class="project-grid" *ngIf="projects.length > 0">
+        <article class="project-card" *ngFor="let project of projects">
+          <div class="project-top">
+            <div>
+              <h3>{{ project.name }}</h3>
+              <p>{{ project.description }}</p>
             </div>
 
-            <small>Owner: {{ project.ownerEmail }}</small>
+            <span class="status">{{ project.status }}</span>
           </div>
 
-          <button class="danger-btn" (click)="deleteProject(project)">Delete</button>
-        </div>
+          <div class="repo-box">
+            <strong>{{ project.repository.provider }}</strong>
+            <span>{{ project.repository.repositoryUrl }}</span>
+            <small>Branch: {{ project.repository.defaultBranch }}</small>
+          </div>
+
+          <div class="env-list">
+            <div *ngFor="let env of project.environments">
+              <span>{{ env.name }}</span>
+              <strong>{{ env.type }}</strong>
+              <small>{{ env.protectedEnvironment ? 'Protected' : 'Open' }}</small>
+            </div>
+          </div>
+
+          <div class="project-actions">
+            <button class="secondary-btn" routerLink="/pipelines">Create pipeline</button>
+            <button class="danger-btn" (click)="deleteProject(project.id)">Delete</button>
+          </div>
+        </article>
       </div>
-    </article>
+    </section>
   </section>
 </div>

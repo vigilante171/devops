@@ -1,17 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import {
   CreateProjectRequest,
+  DevOpsEnvironment,
   ProjectResponse,
-  ProjectService
+  ProjectService,
+  RepositoryConfig
 } from '../core/services/project.service';
 
 @Component({
   selector: 'app-projects-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './projects.page.html',
   styleUrl: './projects.page.scss'
 })
@@ -23,80 +26,129 @@ export class ProjectsPage implements OnInit {
   errorMessage = '';
   successMessage = '';
 
-  form: CreateProjectRequest = {
-    name: 'DevOps Control Center',
-    description: 'Main platform for managing pipelines, deployments and monitoring.',
-    repository: {
-      provider: 'GitHub',
-      repositoryUrl: 'https://github.com/example/devops-control-center',
-      defaultBranch: 'main',
-      webhookEnabled: true
-    },
-    environments: [
-      {
-        name: 'Development',
-        type: 'DEVELOPMENT',
-        baseUrl: 'http://localhost:4200',
-        protectedEnvironment: false
-      },
-      {
-        name: 'Production',
-        type: 'PRODUCTION',
-        baseUrl: 'https://devops.example.com',
-        protectedEnvironment: true
-      }
-    ]
-  };
+  name = 'Payment Platform';
+  description = 'Microservices project managed by the DevOps Control Center.';
+  provider = 'GITHUB';
+  repositoryUrl = 'https://github.com/demo/payment-platform';
+  defaultBranch = 'main';
+  webhookEnabled = true;
 
-  constructor(private projectService: ProjectService) {}
+  devUrl = 'http://dev.payment.local';
+  stagingUrl = 'http://staging.payment.local';
+  productionUrl = 'http://payment.local';
+
+  constructor(
+    private projectService: ProjectService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
-    this.loadProjects();
+    setTimeout(() => this.loadProjects(), 100);
   }
 
   loadProjects(): void {
     this.isLoading = true;
     this.errorMessage = '';
+    this.cdr.detectChanges();
 
     this.projectService.getProjects().subscribe({
-      next: (projects) => {
-        this.projects = projects;
+      next: (data) => {
+        this.projects = data;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
-      error: () => {
-        this.errorMessage = 'Could not load projects.';
+      error: (error) => {
+        console.error('Load projects failed:', error);
+        this.errorMessage = 'Could not load projects. Please check project-service and api-gateway.';
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
   createProject(): void {
-    this.isCreating = true;
     this.errorMessage = '';
     this.successMessage = '';
 
-    this.projectService.createProject(this.form).subscribe({
-      next: () => {
-        this.successMessage = 'Project created successfully.';
-        this.isCreating = false;
-        this.loadProjects();
+    if (!this.name.trim() || !this.repositoryUrl.trim()) {
+      this.errorMessage = 'Project name and repository URL are required.';
+      return;
+    }
+
+    this.isCreating = true;
+    this.cdr.detectChanges();
+
+    const repository: RepositoryConfig = {
+      provider: this.provider,
+      repositoryUrl: this.repositoryUrl,
+      defaultBranch: this.defaultBranch || 'main',
+      webhookEnabled: this.webhookEnabled
+    };
+
+    const environments: DevOpsEnvironment[] = [
+      {
+        name: 'Development',
+        type: 'DEVELOPMENT',
+        baseUrl: this.devUrl,
+        protectedEnvironment: false
       },
-      error: () => {
-        this.errorMessage = 'Could not create project.';
+      {
+        name: 'Staging',
+        type: 'STAGING',
+        baseUrl: this.stagingUrl,
+        protectedEnvironment: false
+      },
+      {
+        name: 'Production',
+        type: 'PRODUCTION',
+        baseUrl: this.productionUrl,
+        protectedEnvironment: true
+      }
+    ];
+
+    const request: CreateProjectRequest = {
+      name: this.name,
+      description: this.description,
+      repository,
+      environments
+    };
+
+    this.projectService.createProject(request).subscribe({
+      next: (createdProject) => {
+        this.successMessage = 'Project created successfully.';
+        this.projects = [createdProject, ...this.projects];
         this.isCreating = false;
+        this.cdr.detectChanges();
+
+        setTimeout(() => this.loadProjects(), 300);
+      },
+      error: (error) => {
+        console.error('Create project failed:', error);
+        this.errorMessage = 'Could not create project. Please verify the backend is running.';
+        this.isCreating = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
-  deleteProject(project: ProjectResponse): void {
-    if (!confirm(`Delete project "${project.name}"?`)) {
+  deleteProject(id: string): void {
+    const confirmed = confirm('Delete this project?');
+    if (!confirmed) {
       return;
     }
 
-    this.projectService.deleteProject(project.id).subscribe({
-      next: () => this.loadProjects(),
-      error: () => {
+    this.projectService.deleteProject(id).subscribe({
+      next: () => {
+        this.successMessage = 'Project deleted successfully.';
+        this.projects = this.projects.filter((project) => project.id !== id);
+        this.cdr.detectChanges();
+
+        setTimeout(() => this.loadProjects(), 300);
+      },
+      error: (error) => {
+        console.error('Delete project failed:', error);
         this.errorMessage = 'Could not delete project.';
+        this.cdr.detectChanges();
       }
     });
   }

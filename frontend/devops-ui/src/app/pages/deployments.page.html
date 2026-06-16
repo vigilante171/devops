@@ -1,0 +1,33 @@
+<div class="page">
+  <header>
+    <div>
+      <p class="eyebrow">Releases</p>
+      <h1>Deployments</h1>
+      <span>Track application releases across environments.</span>
+    </div>
+    <a routerLink="/dashboard">Back to dashboard</a>
+  </header>
+
+  <div class="alert" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <section class="grid">
+    <article class="card" *ngFor="let deployment of deployments">
+      <h3>{{ deployment.applicationName }}</h3>
+      <p>{{ deployment.notes || 'No notes provided.' }}</p>
+
+      <div class="meta">
+        <span>{{ deployment.environment }}</span>
+        <span>{{ deployment.strategy }}</span>
+        <span>{{ deployment.status }}</span>
+      </div>
+
+      <small>Version: {{ deployment.version }}</small>
+
+      <button (click)="markSuccess(deployment.id)">Mark success</button>
+    </article>
+  </section>
+
+  <section class="empty" *ngIf="!isLoading && deployments.length === 0">
+    No deployments yet.
+  </section>
+</div>

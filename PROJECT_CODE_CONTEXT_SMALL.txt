@@ -1,0 +1,5356 @@
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\index.html
+==============================
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DevopsUi</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\main.ts
+==============================
+
+import { bootstrapApplication } from '@angular/platform-browser';
+import { appConfig } from './app/app.config';
+import { App } from './app/app';
+
+bootstrapApplication(App, appConfig)
+  .catch((err) => console.error(err));
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\styles.scss
+==============================
+
+/* You can add global styles to this file, and also import other style files */
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\app.config.ts
+==============================
+
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+
+import { routes } from './app.routes';
+import { authInterceptor } from './core/auth/interceptors/auth.interceptor';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZonelessChangeDetection(),
+    provideRouter(routes),
+    provideHttpClient(withInterceptors([authInterceptor]))
+  ]
+};
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\app.html
+==============================
+
+<router-outlet></router-outlet>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\app.routes.ts
+==============================
+
+import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/guards/auth.guard';
+
+export const routes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: 'login'
+  },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./pages/login.page').then((m) => m.LoginPage)
+  },
+  {
+    path: 'dashboard',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/dashboard.page').then((m) => m.DashboardPage)
+  },
+  {
+    path: 'projects',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/projects.page').then((m) => m.ProjectsPage)
+  },
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./pages/not-found.page').then((m) => m.NotFoundPage)
+  }
+];
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\app.scss
+==============================
+
+:host { display: block; min-height: 100vh; }
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\app.spec.ts
+==============================
+
+import { TestBed } from '@angular/core/testing';
+import { App } from './app';
+
+describe('App', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [App],
+    }).compileComponents();
+  });
+
+  it('should create the app', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    expect(app).toBeTruthy();
+  });
+
+  it('should render title', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, devops-ui');
+  });
+});
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\app.ts
+==============================
+
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.html',
+  styleUrl: './app.scss'
+})
+export class App {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\auth\guards\auth.guard.ts
+==============================
+
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { TokenService } from '../services/token.service';
+
+export const authGuard: CanActivateFn = () => {
+  const tokenService = inject(TokenService);
+  const router = inject(Router);
+
+  const token = tokenService.getAccessToken();
+
+  console.log('AuthGuard token:', token);
+
+  if (token && token.length > 20) {
+    return true;
+  }
+
+  return router.createUrlTree(['/login']);
+};
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\auth\guards\role.guard.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\auth\interceptors\auth.interceptor.ts
+==============================
+
+import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { TokenService } from '../services/token.service';
+
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const tokenService = inject(TokenService);
+  const token = tokenService.getAccessToken();
+
+  if (!token) {
+    return next(req);
+  }
+
+  const authenticatedRequest = req.clone({
+    setHeaders: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  return next(authenticatedRequest);
+};
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\auth\services\auth.service.ts
+==============================
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  id: string;
+  email: string;
+  fullName: string;
+  roles: string[];
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private readonly apiUrl = 'http://localhost:8080/api/auth';
+
+  constructor(private http: HttpClient) {}
+
+  login(request: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, request);
+  }
+
+  register(request: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/register`, request);
+  }
+
+  me(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/me`);
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\auth\services\token.service.ts
+==============================
+
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TokenService {
+  private readonly accessTokenKey = 'devops_access_token';
+  private readonly refreshTokenKey = 'devops_refresh_token';
+  private readonly userKey = 'devops_user';
+
+  saveSession(response: any): void {
+    localStorage.setItem(this.accessTokenKey, response.accessToken);
+    localStorage.setItem(this.refreshTokenKey, response.refreshToken);
+
+    const user = {
+      id: response.id,
+      email: response.email,
+      fullName: response.fullName,
+      roles: response.roles
+    };
+
+    localStorage.setItem(this.userKey, JSON.stringify(user));
+  }
+
+  getAccessToken(): string | null {
+    return localStorage.getItem(this.accessTokenKey);
+  }
+
+  getUser(): any | null {
+    const user = localStorage.getItem(this.userKey);
+    return user ? JSON.parse(user) : null;
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getAccessToken();
+  }
+
+  clearSession(): void {
+    localStorage.removeItem(this.accessTokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
+    localStorage.removeItem(this.userKey);
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\layout\main-layout\main-layout.html
+==============================
+
+<p>main-layout works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\layout\main-layout\main-layout.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\layout\main-layout\main-layout.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-main-layout',
+  imports: [],
+  templateUrl: './main-layout.html',
+  styleUrl: './main-layout.scss',
+})
+export class MainLayout {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\api.service.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\deployment.service.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\monitoring.service.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\notification.service.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\pipeline.service.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\project.service.ts
+==============================
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface RepositoryConfig {
+  provider: string;
+  repositoryUrl: string;
+  defaultBranch: string;
+  webhookEnabled: boolean;
+}
+
+export interface DevOpsEnvironment {
+  name: string;
+  type: 'DEVELOPMENT' | 'TESTING' | 'STAGING' | 'PRODUCTION';
+  baseUrl: string;
+  protectedEnvironment: boolean;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description: string;
+  repository: RepositoryConfig;
+  environments: DevOpsEnvironment[];
+}
+
+export interface ProjectResponse {
+  id: string;
+  name: string;
+  description: string;
+  ownerEmail: string;
+  status: string;
+  repository: RepositoryConfig;
+  environments: DevOpsEnvironment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ProjectService {
+  private readonly apiUrl = 'http://localhost:8080/api/projects';
+
+  constructor(private http: HttpClient) {}
+
+  getProjects(): Observable<ProjectResponse[]> {
+    return this.http.get<ProjectResponse[]>(this.apiUrl);
+  }
+
+  createProject(request: CreateProjectRequest): Observable<ProjectResponse> {
+    return this.http.post<ProjectResponse>(this.apiUrl, request);
+  }
+
+  deleteProject(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\core\services\realtime.service.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\audit-logs\audit-log-list\audit-log-list.html
+==============================
+
+<p>audit-log-list works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\audit-logs\audit-log-list\audit-log-list.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\audit-logs\audit-log-list\audit-log-list.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-audit-log-list',
+  imports: [],
+  templateUrl: './audit-log-list.html',
+  styleUrl: './audit-log-list.scss',
+})
+export class AuditLogList {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\forgot-password\forgot-password.html
+==============================
+
+<p>forgot-password works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\forgot-password\forgot-password.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\forgot-password\forgot-password.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-forgot-password',
+  imports: [],
+  templateUrl: './forgot-password.html',
+  styleUrl: './forgot-password.scss',
+})
+export class ForgotPassword {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\login\login.html
+==============================
+
+<p>login works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\login\login.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\login\login.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-login',
+  imports: [],
+  templateUrl: './login.html',
+  styleUrl: './login.scss',
+})
+export class Login {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\register\register.html
+==============================
+
+<p>register works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\register\register.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\register\register.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-register',
+  imports: [],
+  templateUrl: './register.html',
+  styleUrl: './register.scss',
+})
+export class Register {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\reset-password\reset-password.html
+==============================
+
+<p>reset-password works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\reset-password\reset-password.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\auth\reset-password\reset-password.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-reset-password',
+  imports: [],
+  templateUrl: './reset-password.html',
+  styleUrl: './reset-password.scss',
+})
+export class ResetPassword {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\dashboard\overview\overview.html
+==============================
+
+<p>overview works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\dashboard\overview\overview.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\dashboard\overview\overview.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-overview',
+  imports: [],
+  templateUrl: './overview.html',
+  styleUrl: './overview.scss',
+})
+export class Overview {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\deployment-details\deployment-details.html
+==============================
+
+<p>deployment-details works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\deployment-details\deployment-details.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\deployment-details\deployment-details.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-deployment-details',
+  imports: [],
+  templateUrl: './deployment-details.html',
+  styleUrl: './deployment-details.scss',
+})
+export class DeploymentDetails {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\deployment-list\deployment-list.html
+==============================
+
+<p>deployment-list works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\deployment-list\deployment-list.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\deployment-list\deployment-list.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-deployment-list',
+  imports: [],
+  templateUrl: './deployment-list.html',
+  styleUrl: './deployment-list.scss',
+})
+export class DeploymentList {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\release-history\release-history.html
+==============================
+
+<p>release-history works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\release-history\release-history.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\release-history\release-history.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-release-history',
+  imports: [],
+  templateUrl: './release-history.html',
+  styleUrl: './release-history.scss',
+})
+export class ReleaseHistory {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\rollback\rollback.html
+==============================
+
+<p>rollback works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\rollback\rollback.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\deployments\rollback\rollback.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-rollback',
+  imports: [],
+  templateUrl: './rollback.html',
+  styleUrl: './rollback.scss',
+})
+export class Rollback {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\forbidden\forbidden.html
+==============================
+
+<p>forbidden works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\forbidden\forbidden.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\forbidden\forbidden.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-forbidden',
+  imports: [],
+  templateUrl: './forbidden.html',
+  styleUrl: './forbidden.scss',
+})
+export class Forbidden {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\not-found\not-found.html
+==============================
+
+<p>not-found works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\not-found\not-found.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\not-found\not-found.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-not-found',
+  imports: [],
+  templateUrl: './not-found.html',
+  styleUrl: './not-found.scss',
+})
+export class NotFound {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\server-error\server-error.html
+==============================
+
+<p>server-error works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\server-error\server-error.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\error-pages\server-error\server-error.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-server-error',
+  imports: [],
+  templateUrl: './server-error.html',
+  styleUrl: './server-error.scss',
+})
+export class ServerError {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\alerts\alerts.html
+==============================
+
+<p>alerts works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\alerts\alerts.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\alerts\alerts.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-alerts',
+  imports: [],
+  templateUrl: './alerts.html',
+  styleUrl: './alerts.scss',
+})
+export class Alerts {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\logs\logs.html
+==============================
+
+<p>logs works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\logs\logs.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\logs\logs.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-logs',
+  imports: [],
+  templateUrl: './logs.html',
+  styleUrl: './logs.scss',
+})
+export class Logs {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\metrics\metrics.html
+==============================
+
+<p>metrics works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\metrics\metrics.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\metrics\metrics.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-metrics',
+  imports: [],
+  templateUrl: './metrics.html',
+  styleUrl: './metrics.scss',
+})
+export class Metrics {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\service-health\service-health.html
+==============================
+
+<p>service-health works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\service-health\service-health.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\monitoring\service-health\service-health.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-service-health',
+  imports: [],
+  templateUrl: './service-health.html',
+  styleUrl: './service-health.scss',
+})
+export class ServiceHealth {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\notifications\notification-center\notification-center.html
+==============================
+
+<p>notification-center works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\notifications\notification-center\notification-center.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\notifications\notification-center\notification-center.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-notification-center',
+  imports: [],
+  templateUrl: './notification-center.html',
+  styleUrl: './notification-center.scss',
+})
+export class NotificationCenter {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-create\pipeline-create.html
+==============================
+
+<p>pipeline-create works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-create\pipeline-create.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-create\pipeline-create.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-pipeline-create',
+  imports: [],
+  templateUrl: './pipeline-create.html',
+  styleUrl: './pipeline-create.scss',
+})
+export class PipelineCreate {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-details\pipeline-details.html
+==============================
+
+<p>pipeline-details works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-details\pipeline-details.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-details\pipeline-details.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-pipeline-details',
+  imports: [],
+  templateUrl: './pipeline-details.html',
+  styleUrl: './pipeline-details.scss',
+})
+export class PipelineDetails {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-list\pipeline-list.html
+==============================
+
+<p>pipeline-list works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-list\pipeline-list.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-list\pipeline-list.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-pipeline-list',
+  imports: [],
+  templateUrl: './pipeline-list.html',
+  styleUrl: './pipeline-list.scss',
+})
+export class PipelineList {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-logs\pipeline-logs.html
+==============================
+
+<p>pipeline-logs works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-logs\pipeline-logs.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-logs\pipeline-logs.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-pipeline-logs',
+  imports: [],
+  templateUrl: './pipeline-logs.html',
+  styleUrl: './pipeline-logs.scss',
+})
+export class PipelineLogs {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-run\pipeline-run.html
+==============================
+
+<p>pipeline-run works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-run\pipeline-run.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\pipelines\pipeline-run\pipeline-run.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-pipeline-run',
+  imports: [],
+  templateUrl: './pipeline-run.html',
+  styleUrl: './pipeline-run.scss',
+})
+export class PipelineRun {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\profile\profile\profile.html
+==============================
+
+<p>profile works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\profile\profile\profile.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\profile\profile\profile.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-profile',
+  imports: [],
+  templateUrl: './profile.html',
+  styleUrl: './profile.scss',
+})
+export class Profile {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-create\project-create.html
+==============================
+
+<p>project-create works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-create\project-create.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-create\project-create.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-project-create',
+  imports: [],
+  templateUrl: './project-create.html',
+  styleUrl: './project-create.scss',
+})
+export class ProjectCreate {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-details\project-details.html
+==============================
+
+<p>project-details works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-details\project-details.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-details\project-details.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-project-details',
+  imports: [],
+  templateUrl: './project-details.html',
+  styleUrl: './project-details.scss',
+})
+export class ProjectDetails {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-list\project-list.html
+==============================
+
+<p>project-list works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-list\project-list.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-list\project-list.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-project-list',
+  imports: [],
+  templateUrl: './project-list.html',
+  styleUrl: './project-list.scss',
+})
+export class ProjectList {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-members\project-members.html
+==============================
+
+<p>project-members works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-members\project-members.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-members\project-members.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-project-members',
+  imports: [],
+  templateUrl: './project-members.html',
+  styleUrl: './project-members.scss',
+})
+export class ProjectMembers {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-settings\project-settings.html
+==============================
+
+<p>project-settings works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-settings\project-settings.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\projects\project-settings\project-settings.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-project-settings',
+  imports: [],
+  templateUrl: './project-settings.html',
+  styleUrl: './project-settings.scss',
+})
+export class ProjectSettings {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\settings\settings\settings.html
+==============================
+
+<p>settings works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\settings\settings\settings.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\settings\settings\settings.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-settings',
+  imports: [],
+  templateUrl: './settings.html',
+  styleUrl: './settings.scss',
+})
+export class Settings {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\role-management\role-management.html
+==============================
+
+<p>role-management works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\role-management\role-management.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\role-management\role-management.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-role-management',
+  imports: [],
+  templateUrl: './role-management.html',
+  styleUrl: './role-management.scss',
+})
+export class RoleManagement {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-create\user-create.html
+==============================
+
+<p>user-create works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-create\user-create.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-create\user-create.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-user-create',
+  imports: [],
+  templateUrl: './user-create.html',
+  styleUrl: './user-create.scss',
+})
+export class UserCreate {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-details\user-details.html
+==============================
+
+<p>user-details works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-details\user-details.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-details\user-details.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-user-details',
+  imports: [],
+  templateUrl: './user-details.html',
+  styleUrl: './user-details.scss',
+})
+export class UserDetails {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-list\user-list.html
+==============================
+
+<p>user-list works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-list\user-list.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\features\users\user-list\user-list.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-user-list',
+  imports: [],
+  templateUrl: './user-list.html',
+  styleUrl: './user-list.scss',
+})
+export class UserList {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\dashboard.page.html
+==============================
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">D</div>
+      <div>
+        <h1>DevOps Center</h1>
+        <span>Enterprise Control Platform</span>
+      </div>
+    </div>
+
+    <nav class="menu">
+      <a class="menu-item active" href="#">
+        <span></span>
+        Dashboard
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Projects
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Pipelines
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Deployments
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Monitoring
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Alerts
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Users & Roles
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Audit Logs
+      </a>
+      <a class="menu-item" href="#">
+        <span></span>
+        Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-card">
+      <p>System Status</p>
+      <strong>All services operational</strong>
+      <div class="status-line">
+        <span></span>
+        99.98% uptime
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Welcome back, {{ user?.fullName || "Engineer" }}</p>
+        <h2>DevOps Operations Dashboard</h2>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="search-box">
+          <span></span>
+          <input placeholder="Search projects, pipelines, deployments..." />
+        </div>
+
+        <button class="icon-btn"></button>
+        <button class="secondary-btn" (click)="logout()">Logout</button><button class="primary-btn">+ New Pipeline</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Live environment overview</p>
+        <h3>Build, monitor, secure and deploy from one command center.</h3>
+        <p>
+          Track pipelines, releases, services, alerts and team activity in real time with a secure microservices architecture.
+        </p>
+
+        <div class="hero-actions">
+          <button class="primary-btn">Run Deployment</button>
+          <button class="secondary-btn">View Logs</button>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <div class="pulse"></div>
+        <p>Production Health</p>
+        <strong>98.7%</strong>
+        <span>Stable  Last checked 12 seconds ago</span>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-icon blue"></span>
+        <p>Total Projects</p>
+        <strong>24</strong>
+        <small>+4 this month</small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-icon green"></span>
+        <p>Active Pipelines</p>
+        <strong>12</strong>
+        <small>8 running successfully</small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-icon purple"></span>
+        <p>Deployments</p>
+        <strong>156</strong>
+        <small>32 production releases</small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-icon red"></span>
+        <p>Open Alerts</p>
+        <strong>3</strong>
+        <small>1 critical incident</small>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="panel large-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Pipeline activity</p>
+            <h3>Current pipeline runs</h3>
+          </div>
+          <button class="small-btn">View all</button>
+        </div>
+
+        <div class="pipeline-list">
+          <div class="pipeline-item">
+            <div>
+              <strong>payment-api-build</strong>
+              <span>Build  Test  Security Scan  Deploy</span>
+            </div>
+            <div class="progress">
+              <div style="width: 82%"></div>
+            </div>
+            <span class="badge running">Running</span>
+          </div>
+
+          <div class="pipeline-item">
+            <div>
+              <strong>frontend-release</strong>
+              <span>Install  Lint  Build  Preview</span>
+            </div>
+            <div class="progress">
+              <div style="width: 100%"></div>
+            </div>
+            <span class="badge success">Success</span>
+          </div>
+
+          <div class="pipeline-item">
+            <div>
+              <strong>security-audit-job</strong>
+              <span>Dependency Scan  Secrets Scan  Report</span>
+            </div>
+            <div class="progress">
+              <div style="width: 42%"></div>
+            </div>
+            <span class="badge warning">Review</span>
+          </div>
+
+          <div class="pipeline-item">
+            <div>
+              <strong>inventory-service</strong>
+              <span>Compile  Unit Tests  Integration Tests</span>
+            </div>
+            <div class="progress">
+              <div style="width: 17%"></div>
+            </div>
+            <span class="badge failed">Failed</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Services</p>
+            <h3>Health status</h3>
+          </div>
+        </div>
+
+        <div class="health-list">
+          <div>
+            <span class="dot green"></span>
+            API Gateway
+            <strong>Healthy</strong>
+          </div>
+          <div>
+            <span class="dot green"></span>
+            Auth Service
+            <strong>Healthy</strong>
+          </div>
+          <div>
+            <span class="dot green"></span>
+            Pipeline Service
+            <strong>Healthy</strong>
+          </div>
+          <div>
+            <span class="dot yellow"></span>
+            Monitoring Service
+            <strong>Slow</strong>
+          </div>
+          <div>
+            <span class="dot red"></span>
+            Notification Service
+            <strong>Error</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Latest releases</p>
+            <h3>Deployments</h3>
+          </div>
+        </div>
+
+        <div class="release-list">
+          <div>
+            <strong>v2.4.1</strong>
+            <span>Production</span>
+            <em>Success</em>
+          </div>
+          <div>
+            <strong>v2.4.0</strong>
+            <span>Staging</span>
+            <em>Success</em>
+          </div>
+          <div>
+            <strong>v2.3.9</strong>
+            <span>Testing</span>
+            <em>Rollback ready</em>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel activity-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Audit stream</p>
+            <h3>Recent activity</h3>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div>
+            <span></span>
+            <p><strong>Admin</strong> approved production deployment.</p>
+            <small>2 minutes ago</small>
+          </div>
+
+          <div>
+            <span></span>
+            <p><strong>Pipeline</strong> completed frontend-release successfully.</p>
+            <small>9 minutes ago</small>
+          </div>
+
+          <div>
+            <span></span>
+            <p><strong>Security scan</strong> detected one dependency warning.</p>
+            <small>18 minutes ago</small>
+          </div>
+
+          <div>
+            <span></span>
+            <p><strong>User role</strong> updated for devops.engineer.</p>
+            <small>31 minutes ago</small>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
+
+
+
+<a routerLink="/projects" class="primary-btn">
+  Open Projects
+</a>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\dashboard.page.scss
+==============================
+
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #e5e7eb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 35%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.16), transparent 35%),
+    #080b12;
+}
+
+.sidebar {
+  width: 290px;
+  min-height: 100vh;
+  padding: 26px 20px;
+  background: rgba(10, 15, 28, 0.92);
+  border-right: 1px solid rgba(148, 163, 184, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  position: sticky;
+  top: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 900;
+  font-size: 24px;
+  background: linear-gradient(135deg, #2563eb, #9333ea);
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.35);
+}
+
+.brand h1 {
+  font-size: 18px;
+  line-height: 1;
+  margin: 0 0 6px;
+}
+
+.brand span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-item {
+  text-decoration: none;
+  color: #94a3b8;
+  padding: 13px 14px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: 0.25s ease;
+}
+
+.menu-item span {
+  width: 24px;
+  color: #60a5fa;
+}
+
+.menu-item:hover,
+.menu-item.active {
+  color: white;
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.sidebar-card {
+  margin-top: auto;
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(147, 51, 234, 0.18));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.sidebar-card p {
+  color: #94a3b8;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.sidebar-card strong {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a7f3d0;
+  font-size: 13px;
+}
+
+.status-line span {
+  width: 9px;
+  height: 9px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.14);
+}
+
+.main-content {
+  flex: 1;
+  padding: 26px;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-box {
+  width: 370px;
+  height: 46px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.search-box input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: white;
+}
+
+.search-box input::placeholder {
+  color: #64748b;
+}
+
+.primary-btn,
+.secondary-btn,
+.icon-btn,
+.small-btn {
+  border: 0;
+  cursor: pointer;
+  color: white;
+  font-weight: 800;
+  transition: 0.25s ease;
+}
+
+.primary-btn {
+  padding: 13px 18px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #2563eb, #9333ea);
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.22);
+}
+
+.secondary-btn,
+.small-btn {
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.84);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.icon-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: rgba(15, 23, 42, 0.84);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  gap: 22px;
+  padding: 30px;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.26), rgba(147, 51, 234, 0.18)),
+    rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  margin-bottom: 22px;
+  overflow: hidden;
+  position: relative;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  right: -80px;
+  top: -100px;
+  border-radius: 50%;
+  background: rgba(96, 165, 250, 0.18);
+  filter: blur(8px);
+}
+
+.hero h3 {
+  position: relative;
+  z-index: 1;
+  font-size: 38px;
+  line-height: 1.05;
+  max-width: 720px;
+  margin: 0;
+  letter-spacing: -0.05em;
+}
+
+.hero p {
+  position: relative;
+  z-index: 1;
+  color: #cbd5e1;
+  max-width: 760px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.hero-panel {
+  position: relative;
+  z-index: 1;
+  min-height: 220px;
+  border-radius: 24px;
+  background: rgba(8, 11, 18, 0.64);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.hero-panel p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.hero-panel strong {
+  font-size: 56px;
+  letter-spacing: -0.06em;
+  margin: 6px 0;
+}
+
+.hero-panel span {
+  color: #a7f3d0;
+  font-size: 13px;
+}
+
+.pulse {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  width: 18px;
+  height: 18px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 1.8s infinite;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.stat-card,
+.panel {
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 24px;
+  backdrop-filter: blur(18px);
+}
+
+.stat-card {
+  padding: 22px;
+  transition: 0.25s ease;
+}
+
+.stat-card:hover,
+.panel:hover {
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  margin-bottom: 16px;
+  font-weight: 900;
+}
+
+.stat-icon.blue {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+
+.stat-icon.green {
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+}
+
+.stat-icon.purple {
+  background: rgba(168, 85, 247, 0.16);
+  color: #c084fc;
+}
+
+.stat-icon.red {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+
+.stat-card p {
+  color: #94a3b8;
+  margin: 0 0 8px;
+}
+
+.stat-card strong {
+  display: block;
+  font-size: 34px;
+  letter-spacing: -0.05em;
+}
+
+.stat-card small {
+  color: #64748b;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 18px;
+}
+
+.panel {
+  padding: 22px;
+}
+
+.large-panel {
+  grid-row: span 2;
+}
+
+.activity-panel {
+  grid-column: span 2;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pipeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pipeline-item {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 90px;
+  gap: 18px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(8, 11, 18, 0.52);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.pipeline-item strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.pipeline-item span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.progress {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.9);
+  overflow: hidden;
+}
+
+.progress div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #22c55e);
+}
+
+.badge {
+  padding: 8px 10px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 12px !important;
+  font-weight: 900;
+}
+
+.badge.running {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.badge.success {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+.badge.warning {
+  background: rgba(234, 179, 8, 0.16);
+  color: #fde68a;
+}
+
+.badge.failed {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+.health-list,
+.release-list,
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.health-list div,
+.release-list div {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  background: rgba(8, 11, 18, 0.52);
+  border-radius: 16px;
+  color: #cbd5e1;
+}
+
+.release-list div {
+  grid-template-columns: 1fr auto auto;
+}
+
+.health-list strong {
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+.release-list span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.release-list em {
+  font-style: normal;
+  color: #86efac;
+  font-size: 13px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot.green {
+  background: #22c55e;
+}
+
+.dot.yellow {
+  background: #eab308;
+}
+
+.dot.red {
+  background: #ef4444;
+}
+
+.timeline div {
+  position: relative;
+  padding-left: 28px;
+}
+
+.timeline div > span {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12);
+}
+
+.timeline p {
+  margin: 0 0 4px;
+  color: #cbd5e1;
+}
+
+.timeline small {
+  color: #64748b;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 18px rgba(34, 197, 94, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@media (max-width: 1200px) {
+  .stats-grid,
+  .dashboard-grid,
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-panel {
+    grid-column: span 1;
+  }
+
+  .search-box {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    position: static;
+  }
+
+  .topbar,
+  .topbar-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-item {
+    grid-template-columns: 1fr;
+  }
+
+  .hero h3 {
+    font-size: 30px;
+  }
+}
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\dashboard.page.ts
+==============================
+
+import { Component } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+
+import { TokenService } from '../core/auth/services/token.service';
+
+@Component({
+  selector: 'app-dashboard-page',
+  standalone: true,
+  imports: [RouterLink],
+  templateUrl: './dashboard.page.html',
+  styleUrl: './dashboard.page.scss'
+})
+export class DashboardPage {
+  user: any;
+
+  constructor(
+    private tokenService: TokenService,
+    private router: Router
+  ) {
+    this.user = this.tokenService.getUser();
+  }
+
+  logout(): void {
+    this.tokenService.clearSession();
+    this.router.navigateByUrl('/login');
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\login.page.html
+==============================
+
+<div class="auth-shell">
+  <section class="auth-visual">
+    <div class="brand">
+      <div class="logo">D</div>
+      <div>
+        <h1>DevOps Center</h1>
+        <p>Enterprise Control Platform</p>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <p class="eyebrow">Secure DevOps Platform</p>
+      <h2>Control pipelines, deployments and monitoring from one place.</h2>
+      <p>
+        Built with Angular, Spring Boot microservices, Node.js realtime services and MongoDB Atlas.
+      </p>
+
+      <div class="mini-grid">
+        <div>
+          <strong>99.98%</strong>
+          <span>Uptime</span>
+        </div>
+        <div>
+          <strong>24</strong>
+          <span>Projects</span>
+        </div>
+        <div>
+          <strong>156</strong>
+          <span>Deployments</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="auth-panel">
+    <div class="login-card">
+      <p class="eyebrow">Welcome back</p>
+      <h2>Sign in to your workspace</h2>
+      <p class="muted">Use your DevOps account to access the dashboard.</p>
+
+      <form (ngSubmit)="login()">
+        <label>
+          Email address
+          <input
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            placeholder="engineer@devops.com"
+            required
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            placeholder=""
+            required
+          />
+        </label>
+
+        <div class="form-row">
+          <label class="check">
+            <input type="checkbox" />
+            Remember me
+          </label>
+
+          <a href="#">Forgot password?</a>
+        </div>
+
+        <div class="alert error" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="alert success" *ngIf="successMessage">
+          {{ successMessage }}
+        </div>
+
+        <button class="submit-btn" type="submit" [disabled]="isLoading">
+          {{ isLoading ? 'Signing in...' : 'Sign in securely' }}
+        </button>
+      </form>
+
+      <p class="footer-text">
+        New here?
+        <a href="#">Create an account</a>
+      </p>
+    </div>
+  </section>
+</div>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\login.page.scss
+==============================
+
+:host {
+  display: block;
+  min-height: 100vh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e5e7eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.2), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(147, 51, 234, 0.18), transparent 32%),
+    #080b12;
+}
+
+.auth-visual {
+  padding: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.brand {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #2563eb, #9333ea);
+  color: white;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.brand h1 {
+  margin: 0 0 5px;
+  font-size: 20px;
+}
+
+.brand p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.hero-card {
+  max-width: 720px;
+  padding: 38px;
+  border-radius: 34px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.24), rgba(147, 51, 234, 0.18)),
+    rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.eyebrow {
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.hero-card h2 {
+  font-size: 52px;
+  line-height: 1.02;
+  letter-spacing: -0.06em;
+  margin: 0 0 18px;
+}
+
+.hero-card p {
+  color: #cbd5e1;
+  max-width: 620px;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.mini-grid div {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(8, 11, 18, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mini-grid strong {
+  display: block;
+  font-size: 28px;
+}
+
+.mini-grid span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.auth-panel {
+  display: grid;
+  place-items: center;
+  padding: 42px;
+}
+
+.login-card {
+  width: min(100%, 460px);
+  padding: 34px;
+  border-radius: 30px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(18px);
+}
+
+.login-card h2 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  letter-spacing: -0.05em;
+}
+
+.muted {
+  margin: 0 0 28px;
+  color: #94a3b8;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+input {
+  height: 50px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  background: rgba(8, 11, 18, 0.58);
+  color: white;
+  outline: none;
+  padding: 0 15px;
+}
+
+input:focus {
+  border-color: rgba(96, 165, 250, 0.65);
+}
+
+.form-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.check {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+}
+
+a {
+  color: #60a5fa;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.submit-btn {
+  height: 52px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: linear-gradient(135deg, #2563eb, #9333ea);
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.22);
+}
+
+.footer-text {
+  margin: 24px 0 0;
+  text-align: center;
+  color: #94a3b8;
+}
+
+@media (max-width: 1000px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-visual {
+    display: none;
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\login.page.ts
+==============================
+
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+
+import { AuthService } from '../core/auth/services/auth.service';
+import { TokenService } from '../core/auth/services/token.service';
+
+@Component({
+  selector: 'app-login-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink],
+  templateUrl: './login.page.html',
+  styleUrl: './login.page.scss'
+})
+export class LoginPage {
+  email = 'admin@devops.com';
+  password = 'Admin@123456';
+
+  isLoading = false;
+  errorMessage = '';
+  successMessage = '';
+
+  constructor(
+    private authService: AuthService,
+    private tokenService: TokenService,
+    private router: Router
+  ) {}
+
+  login(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.isLoading = true;
+
+    console.log('Trying login with:', this.email);
+
+    this.authService.login({
+      email: this.email,
+      password: this.password
+    }).subscribe({
+      next: async (response) => {
+        console.log('Login success:', response);
+
+        this.tokenService.saveSession(response);
+
+        console.log('Saved token:', this.tokenService.getAccessToken());
+
+        this.successMessage = 'Login successful. Redirecting...';
+        this.isLoading = false;
+
+        await this.router.navigate(['/dashboard']);
+      },
+      error: (error) => {
+        console.error('Login failed:', error);
+
+        this.isLoading = false;
+        this.errorMessage =
+          error?.error?.error ||
+          error?.error?.message ||
+          'Login failed. Please check your email and password.';
+      }
+    });
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\not-found.page.ts
+==============================
+
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
+
+@Component({
+  selector: 'app-not-found-page',
+  standalone: true,
+  imports: [RouterLink],
+  template: `
+    <main class="not-found">
+      <div>
+        <h1>404</h1>
+        <h2>Page not found</h2>
+        <p>The page you are looking for does not exist.</p>
+        <a routerLink="/dashboard">Back to dashboard</a>
+      </div>
+    </main>
+  `,
+  styles: [`
+    .not-found {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #080b12;
+      color: white;
+      font-family: Inter, system-ui, sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 100px;
+      margin: 0;
+      background: linear-gradient(135deg, #2563eb, #9333ea);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+    }
+
+    p {
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+
+    a {
+      color: white;
+      text-decoration: none;
+      padding: 13px 18px;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #2563eb, #9333ea);
+      font-weight: 800;
+    }
+  `]
+})
+export class NotFoundPage {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\projects.page.html
+==============================
+
+<div class="projects-shell">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Project Management</p>
+      <h1>DevOps Projects</h1>
+      <p>Manage repositories, environments and ownership from one secure place.</p>
+    </div>
+
+    <a class="back-link" href="/dashboard">Back to dashboard</a>
+  </header>
+
+  <section class="content-grid">
+    <article class="panel create-panel">
+      <p class="eyebrow">Create project</p>
+      <h2>New DevOps project</h2>
+
+      <form (ngSubmit)="createProject()">
+        <label>
+          Project name
+          <input name="name" [(ngModel)]="form.name" required />
+        </label>
+
+        <label>
+          Description
+          <textarea name="description" [(ngModel)]="form.description"></textarea>
+        </label>
+
+        <div class="two-cols">
+          <label>
+            Repository provider
+            <input name="provider" [(ngModel)]="form.repository.provider" />
+          </label>
+
+          <label>
+            Default branch
+            <input name="defaultBranch" [(ngModel)]="form.repository.defaultBranch" />
+          </label>
+        </div>
+
+        <label>
+          Repository URL
+          <input name="repositoryUrl" [(ngModel)]="form.repository.repositoryUrl" />
+        </label>
+
+        <label class="check">
+          <input
+            type="checkbox"
+            name="webhookEnabled"
+            [(ngModel)]="form.repository.webhookEnabled"
+          />
+          Enable webhook integration
+        </label>
+
+        <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+
+        <button class="primary-btn" type="submit" [disabled]="isCreating">
+          {{ isCreating ? 'Creating...' : '+ Create Project' }}
+        </button>
+      </form>
+    </article>
+
+    <article class="panel list-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Workspace projects</p>
+          <h2>My projects</h2>
+        </div>
+
+        <button class="secondary-btn" (click)="loadProjects()">Refresh</button>
+      </div>
+
+      <div class="loading" *ngIf="isLoading">Loading projects...</div>
+
+      <div class="empty" *ngIf="!isLoading && projects.length === 0">
+        No projects yet. Create your first DevOps project.
+      </div>
+
+      <div class="project-list" *ngIf="projects.length > 0">
+        <div class="project-card" *ngFor="let project of projects">
+          <div>
+            <h3>{{ project.name }}</h3>
+            <p>{{ project.description }}</p>
+
+            <div class="meta">
+              <span>{{ project.status }}</span>
+              <span>{{ project.repository.provider }}</span>
+              <span>{{ project.repository.defaultBranch }}</span>
+            </div>
+
+            <small>Owner: {{ project.ownerEmail }}</small>
+          </div>
+
+          <button class="danger-btn" (click)="deleteProject(project)">Delete</button>
+        </div>
+      </div>
+    </article>
+  </section>
+</div>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\projects.page.scss
+==============================
+
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #e5e7eb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(147, 51, 234, 0.18), transparent 30%),
+    #080b12;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.projects-shell {
+  padding: 34px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 42px;
+  letter-spacing: -0.06em;
+}
+
+.page-header p {
+  color: #94a3b8;
+}
+
+.back-link {
+  color: white;
+  text-decoration: none;
+  padding: 13px 18px;
+  border-radius: 15px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  font-weight: 800;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 22px;
+}
+
+.panel {
+  padding: 26px;
+  border-radius: 28px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+.panel h2 {
+  margin: 0 0 22px;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+label {
+  color: #cbd5e1;
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(8, 11, 18, 0.62);
+  color: white;
+  border-radius: 16px;
+  padding: 14px;
+  outline: none;
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  border-color: rgba(96, 165, 250, 0.65);
+}
+
+.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.check {
+  flex-direction: row;
+  align-items: center;
+  color: #94a3b8;
+}
+
+.check input {
+  width: 16px;
+}
+
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+  border: 0;
+  cursor: pointer;
+  color: white;
+  font-weight: 900;
+  transition: 0.25s ease;
+}
+
+.primary-btn {
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb, #9333ea);
+}
+
+.secondary-btn {
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(8, 11, 18, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.danger-btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+button:hover,
+.back-link:hover {
+  transform: translateY(-2px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.project-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(8, 11, 18, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.11);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.project-card h3 {
+  margin: 0 0 8px;
+}
+
+.project-card p {
+  margin: 0 0 12px;
+  color: #94a3b8;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.meta span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.14);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+small {
+  color: #64748b;
+}
+
+.loading,
+.empty {
+  padding: 22px;
+  color: #94a3b8;
+  border-radius: 18px;
+  background: rgba(8, 11, 18, 0.5);
+}
+
+.alert {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.alert.error {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.alert.success {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+@media (max-width: 1100px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .two-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\pages\projects.page.ts
+==============================
+
+import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import {
+  CreateProjectRequest,
+  ProjectResponse,
+  ProjectService
+} from '../core/services/project.service';
+
+@Component({
+  selector: 'app-projects-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './projects.page.html',
+  styleUrl: './projects.page.scss'
+})
+export class ProjectsPage implements OnInit {
+  projects: ProjectResponse[] = [];
+
+  isLoading = false;
+  isCreating = false;
+  errorMessage = '';
+  successMessage = '';
+
+  form: CreateProjectRequest = {
+    name: 'DevOps Control Center',
+    description: 'Main platform for managing pipelines, deployments and monitoring.',
+    repository: {
+      provider: 'GitHub',
+      repositoryUrl: 'https://github.com/example/devops-control-center',
+      defaultBranch: 'main',
+      webhookEnabled: true
+    },
+    environments: [
+      {
+        name: 'Development',
+        type: 'DEVELOPMENT',
+        baseUrl: 'http://localhost:4200',
+        protectedEnvironment: false
+      },
+      {
+        name: 'Production',
+        type: 'PRODUCTION',
+        baseUrl: 'https://devops.example.com',
+        protectedEnvironment: true
+      }
+    ]
+  };
+
+  constructor(private projectService: ProjectService) {}
+
+  ngOnInit(): void {
+    this.loadProjects();
+  }
+
+  loadProjects(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.projectService.getProjects().subscribe({
+      next: (projects) => {
+        this.projects = projects;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.errorMessage = 'Could not load projects.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  createProject(): void {
+    this.isCreating = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.projectService.createProject(this.form).subscribe({
+      next: () => {
+        this.successMessage = 'Project created successfully.';
+        this.isCreating = false;
+        this.loadProjects();
+      },
+      error: () => {
+        this.errorMessage = 'Could not create project.';
+        this.isCreating = false;
+      }
+    });
+  }
+
+  deleteProject(project: ProjectResponse): void {
+    if (!confirm(`Delete project "${project.name}"?`)) {
+      return;
+    }
+
+    this.projectService.deleteProject(project.id).subscribe({
+      next: () => this.loadProjects(),
+      error: () => {
+        this.errorMessage = 'Could not delete project.';
+      }
+    });
+  }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\cards\stat-card\stat-card.html
+==============================
+
+<p>stat-card works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\cards\stat-card\stat-card.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\cards\stat-card\stat-card.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-stat-card',
+  imports: [],
+  templateUrl: './stat-card.html',
+  styleUrl: './stat-card.scss',
+})
+export class StatCard {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\empty-state\empty-state\empty-state.html
+==============================
+
+<p>empty-state works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\empty-state\empty-state\empty-state.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\empty-state\empty-state\empty-state.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-empty-state',
+  imports: [],
+  templateUrl: './empty-state.html',
+  styleUrl: './empty-state.scss',
+})
+export class EmptyState {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\loaders\page-loader\page-loader.html
+==============================
+
+<p>page-loader works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\loaders\page-loader\page-loader.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\loaders\page-loader\page-loader.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-page-loader',
+  imports: [],
+  templateUrl: './page-loader.html',
+  styleUrl: './page-loader.scss',
+})
+export class PageLoader {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\navbar\app-navbar\app-navbar.html
+==============================
+
+<p>app-navbar works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\navbar\app-navbar\app-navbar.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\navbar\app-navbar\app-navbar.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-app-navbar',
+  imports: [],
+  templateUrl: './app-navbar.html',
+  styleUrl: './app-navbar.scss',
+})
+export class AppNavbar {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\sidebar\app-sidebar\app-sidebar.html
+==============================
+
+<p>app-sidebar works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\sidebar\app-sidebar\app-sidebar.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\sidebar\app-sidebar\app-sidebar.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-app-sidebar',
+  imports: [],
+  templateUrl: './app-sidebar.html',
+  styleUrl: './app-sidebar.scss',
+})
+export class AppSidebar {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\toast\toast-container\toast-container.html
+==============================
+
+<p>toast-container works!</p>
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\toast\toast-container\toast-container.scss
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\components\toast\toast-container\toast-container.ts
+==============================
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-toast-container',
+  imports: [],
+  templateUrl: './toast-container.html',
+  styleUrl: './toast-container.scss',
+})
+export class ToastContainer {}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\models\api-response.model.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\models\deployment.model.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\models\monitoring.model.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\models\pipeline.model.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\models\project.model.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\frontend\devops-ui\src\app\shared\models\user.model.ts
+==============================
+
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\api-gateway\src\main\java\com\devops\apigateway\ApiGatewayApplication.java
+==============================
+
+package com.devops.apigateway;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class ApiGatewayApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(ApiGatewayApplication.class, args);
+	}
+
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\api-gateway\src\main\java\com\devops\apigateway\config\SecurityConfig.java
+==============================
+
+package com.devops.apigateway.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
+@Configuration
+@EnableWebFluxSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        return http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(Customizer.withDefaults())
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                .authorizeExchange(exchange -> exchange
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .pathMatchers("/api/auth/**").permitAll()
+                        .pathMatchers("/api/projects/**").permitAll()
+                        .pathMatchers("/actuator/**").permitAll()
+                        .anyExchange().permitAll()
+                )
+                .build();
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\api-gateway\src\main\resources\application.properties
+==============================
+
+spring.application.name=api-gateway
+server.port=8080
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.instance.prefer-ip-address=true
+
+spring.cloud.gateway.routes[0].id=auth-service
+spring.cloud.gateway.routes[0].uri=lb://AUTH-SERVICE
+spring.cloud.gateway.routes[0].predicates[0]=Path=/api/auth/**
+
+spring.cloud.gateway.routes[1].id=project-service
+spring.cloud.gateway.routes[1].uri=lb://PROJECT-SERVICE
+spring.cloud.gateway.routes[1].predicates[0]=Path=/api/projects/**
+
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedOrigins=http://localhost:4200
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedMethods=GET,POST,PUT,DELETE,OPTIONS
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedHeaders=*
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowCredentials=true
+
+management.endpoints.web.exposure.include=health,info,gateway
+management.endpoint.health.show-details=always
+
+logging.file.name=../../../logs/gateway/api-gateway.log
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\api-gateway\src\test\java\com\devops\apigateway\ApiGatewayApplicationTests.java
+==============================
+
+package com.devops.apigateway;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class ApiGatewayApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\AuthServiceApplication.java
+==============================
+
+package com.devops.authservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class AuthServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(AuthServiceApplication.class, args);
+	}
+
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\config\SecurityConfig.java
+==============================
+
+package com.devops.authservice.config;
+
+import com.devops.authservice.security.CustomUserDetailsService;
+import com.devops.authservice.security.JwtAuthenticationFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomUserDetailsService userDetailsService;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, CustomUserDetailsService userDetailsService) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/ping").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(httpBasic -> httpBasic.disable())
+                .formLogin(formLogin -> formLogin.disable())
+                .build();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\controller\AuthController.java
+==============================
+
+package com.devops.authservice.controller;
+
+import com.devops.authservice.dto.request.LoginRequest;
+import com.devops.authservice.dto.request.RegisterRequest;
+import com.devops.authservice.dto.response.AuthResponse;
+import com.devops.authservice.dto.response.UserProfileResponse;
+import com.devops.authservice.service.AuthService;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    @GetMapping("/ping")
+    public Map<String, String> ping() {
+        return Map.of(
+                "service", "auth-service",
+                "status", "running"
+        );
+    }
+
+    @PostMapping("/register")
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+        return authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
+    }
+
+    @GetMapping("/me")
+    public UserProfileResponse me(Authentication authentication) {
+        return authService.getProfile(authentication.getName());
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\dto\request\LoginRequest.java
+==============================
+
+package com.devops.authservice.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public class LoginRequest {
+
+    @Email(message = "Email must be valid")
+    @NotBlank(message = "Email is required")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email == null ? null : email.toLowerCase().trim();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\dto\request\RegisterRequest.java
+==============================
+
+package com.devops.authservice.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class RegisterRequest {
+
+    @NotBlank(message = "First name is required")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required")
+    private String lastName;
+
+    @Email(message = "Email must be valid")
+    @NotBlank(message = "Email is required")
+    private String email;
+
+    @Size(min = 8, max = 100, message = "Password must contain at least 8 characters")
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName == null ? null : firstName.trim();
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName == null ? null : lastName.trim();
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email == null ? null : email.toLowerCase().trim();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\dto\response\AuthResponse.java
+==============================
+
+package com.devops.authservice.dto.response;
+
+import com.devops.authservice.model.Role;
+
+import java.util.Set;
+
+public class AuthResponse {
+
+    private String id;
+    private String email;
+    private String fullName;
+    private Set<Role> roles;
+    private String accessToken;
+    private String refreshToken;
+    private String tokenType = "Bearer";
+
+    public AuthResponse(String id, String email, String fullName, Set<Role> roles, String accessToken, String refreshToken) {
+        this.id = id;
+        this.email = email;
+        this.fullName = fullName;
+        this.roles = roles;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public String getTokenType() {
+        return tokenType;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\dto\response\UserProfileResponse.java
+==============================
+
+package com.devops.authservice.dto.response;
+
+import com.devops.authservice.model.Role;
+
+import java.util.Set;
+
+public class UserProfileResponse {
+
+    private String id;
+    private String email;
+    private String fullName;
+    private Set<Role> roles;
+
+    public UserProfileResponse(String id, String email, String fullName, Set<Role> roles) {
+        this.id = id;
+        this.email = email;
+        this.fullName = fullName;
+        this.roles = roles;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\exception\BadRequestException.java
+==============================
+
+package com.devops.authservice.exception;
+
+public class BadRequestException extends RuntimeException {
+    public BadRequestException(String message) {
+        super(message);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\exception\GlobalExceptionHandler.java
+==============================
+
+package com.devops.authservice.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentials() {
+        return build(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> validationErrors = new HashMap<>();
+
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            validationErrors.put(error.getField(), error.getDefaultMessage());
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Validation failed");
+        body.put("details", validationErrors);
+
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+    }
+
+    private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", status.value());
+        body.put("error", message);
+        return ResponseEntity.status(status).body(body);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\exception\UnauthorizedException.java
+==============================
+
+package com.devops.authservice.exception;
+
+public class UnauthorizedException extends RuntimeException {
+    public UnauthorizedException(String message) {
+        super(message);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\model\Role.java
+==============================
+
+package com.devops.authservice.model;
+
+public enum Role {
+    ADMIN,
+    DEVOPS_ENGINEER,
+    DEVELOPER,
+    VIEWER
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\model\User.java
+==============================
+
+package com.devops.authservice.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+
+@Document(collection = "users")
+public class User {
+
+    @Id
+    private String id;
+
+    private String firstName;
+    private String lastName;
+
+    @Indexed(unique = true)
+    private String email;
+
+    private String password;
+
+    private Set<Role> roles = new HashSet<>();
+
+    private boolean enabled = true;
+    private boolean accountLocked = false;
+
+    private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+        this.updatedAt = Instant.now();
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+        this.updatedAt = Instant.now();
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email == null ? null : email.toLowerCase().trim();
+        this.updatedAt = Instant.now();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+        this.updatedAt = Instant.now();
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles;
+        this.updatedAt = Instant.now();
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        this.updatedAt = Instant.now();
+    }
+
+    public boolean isAccountLocked() {
+        return accountLocked;
+    }
+
+    public void setAccountLocked(boolean accountLocked) {
+        this.accountLocked = accountLocked;
+        this.updatedAt = Instant.now();
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\repository\UserRepository.java
+==============================
+
+package com.devops.authservice.repository;
+
+import com.devops.authservice.model.User;
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends MongoRepository<User, String> {
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\security\CustomUserDetailsService.java
+==============================
+
+package com.devops.authservice.security;
+
+import com.devops.authservice.model.User;
+import com.devops.authservice.repository.UserRepository;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.util.stream.Collectors;
+
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email.toLowerCase().trim())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())
+                .password(user.getPassword())
+                .authorities(
+                        user.getRoles()
+                                .stream()
+                                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                                .collect(Collectors.toSet())
+                )
+                .accountLocked(user.isAccountLocked())
+                .disabled(!user.isEnabled())
+                .build();
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\security\JwtAuthenticationFilter.java
+==============================
+
+package com.devops.authservice.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+    private final CustomUserDetailsService userDetailsService;
+
+    public JwtAuthenticationFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+        String email = jwtService.extractUsername(token);
+
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+            if (jwtService.isTokenValid(token, userDetails)) {
+                UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+
+                authenticationToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\security\JwtService.java
+==============================
+
+package com.devops.authservice.security;
+
+import com.devops.authservice.model.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+import java.util.Map;
+
+@Service
+public class JwtService {
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${jwt.access-token-expiration-minutes}")
+    private long accessTokenExpirationMinutes;
+
+    @Value("${jwt.refresh-token-expiration-days}")
+    private long refreshTokenExpirationDays;
+
+    public String generateAccessToken(User user) {
+        return buildToken(
+                user,
+                Map.of("type", "access"),
+                accessTokenExpirationMinutes * 60 * 1000
+        );
+    }
+
+    public String generateRefreshToken(User user) {
+        return buildToken(
+                user,
+                Map.of("type", "refresh"),
+                refreshTokenExpirationDays * 24 * 60 * 60 * 1000
+        );
+    }
+
+    private String buildToken(User user, Map<String, Object> extraClaims, long expirationMs) {
+        Instant now = Instant.now();
+
+        return Jwts.builder()
+                .claims(extraClaims)
+                .subject(user.getEmail())
+                .claim("userId", user.getId())
+                .claim("roles", user.getRoles())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(expirationMs)))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public String extractUsername(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        String username = extractUsername(token);
+        return username.equals(userDetails.getUsername()) && !isExpired(token);
+    }
+
+    private boolean isExpired(String token) {
+        return extractAllClaims(token).getExpiration().before(new Date());
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\java\com\devops\authservice\service\AuthService.java
+==============================
+
+package com.devops.authservice.service;
+
+import com.devops.authservice.dto.request.LoginRequest;
+import com.devops.authservice.dto.request.RegisterRequest;
+import com.devops.authservice.dto.response.AuthResponse;
+import com.devops.authservice.dto.response.UserProfileResponse;
+import com.devops.authservice.exception.BadRequestException;
+import com.devops.authservice.model.Role;
+import com.devops.authservice.model.User;
+import com.devops.authservice.repository.UserRepository;
+import com.devops.authservice.security.JwtService;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Service
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            AuthenticationManager authenticationManager
+    ) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
+    }
+
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BadRequestException("Email is already used");
+        }
+
+        User user = new User();
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        Set<Role> roles = new HashSet<>();
+
+        if (userRepository.count() == 0) {
+            roles.add(Role.ADMIN);
+        } else {
+            roles.add(Role.DEVOPS_ENGINEER);
+        }
+
+        user.setRoles(roles);
+
+        User savedUser = userRepository.save(user);
+
+        return buildAuthResponse(savedUser);
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
+
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        return buildAuthResponse(user);
+    }
+
+    public UserProfileResponse getProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        return new UserProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getRoles()
+        );
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getRoles(),
+                accessToken,
+                refreshToken
+        );
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\main\resources\application.properties
+==============================
+
+spring.application.name=auth-service
+server.port=8081
+
+spring.data.mongodb.uri=mongodb+srv://marwenjammazi171_db:marwenjammazi171@cluster0.izxexhd.mongodb.net/devops_auth_db?retryWrites=true&w=majority&appName=Cluster0&tls=true
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.instance.prefer-ip-address=true
+
+jwt.secret=DEVOPS_CONTROL_CENTER_SUPER_SECRET_KEY_2026_CHANGE_IN_PRODUCTION_1234567890_ABCDEFG
+jwt.access-token-expiration-minutes=15
+jwt.refresh-token-expiration-days=7
+
+management.endpoints.web.exposure.include=health,info
+management.endpoint.health.show-details=always
+
+logging.file.name=../../../logs/auth/auth-service.log
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\auth-service\src\test\java\com\devops\authservice\AuthServiceApplicationTests.java
+==============================
+
+package com.devops.authservice;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class AuthServiceApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\ProjectServiceApplication.java
+==============================
+
+package com.devops.projectservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class ProjectServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(ProjectServiceApplication.class, args);
+	}
+
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\config\SecurityConfig.java
+==============================
+
+package com.devops.projectservice.config;
+
+import com.devops.projectservice.security.JwtAuthenticationFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/projects/ping").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(httpBasic -> httpBasic.disable())
+                .formLogin(formLogin -> formLogin.disable())
+                .build();
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\controller\ProjectController.java
+==============================
+
+package com.devops.projectservice.controller;
+
+import com.devops.projectservice.dto.request.CreateProjectRequest;
+import com.devops.projectservice.dto.response.ProjectResponse;
+import com.devops.projectservice.service.ProjectService;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/projects")
+public class ProjectController {
+
+    private final ProjectService projectService;
+
+    public ProjectController(ProjectService projectService) {
+        this.projectService = projectService;
+    }
+
+    @GetMapping("/ping")
+    public Map<String, String> ping() {
+        return Map.of(
+                "service", "project-service",
+                "status", "running"
+        );
+    }
+
+    @PostMapping
+    public ProjectResponse createProject(
+            @Valid @RequestBody CreateProjectRequest request,
+            Authentication authentication
+    ) {
+        return projectService.create(request, authentication.getName());
+    }
+
+    @GetMapping
+    public List<ProjectResponse> myProjects(Authentication authentication) {
+        return projectService.findMyProjects(authentication.getName());
+    }
+
+    @GetMapping("/{id}")
+    public ProjectResponse getProject(@PathVariable String id) {
+        return projectService.findById(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteProject(@PathVariable String id) {
+        projectService.delete(id);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\dto\request\CreateProjectRequest.java
+==============================
+
+package com.devops.projectservice.dto.request;
+
+import com.devops.projectservice.model.DevOpsEnvironment;
+import com.devops.projectservice.model.RepositoryConfig;
+import jakarta.validation.constraints.NotBlank;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class CreateProjectRequest {
+
+    @NotBlank(message = "Project name is required")
+    private String name;
+
+    private String description;
+
+    private RepositoryConfig repository;
+
+    private List<DevOpsEnvironment> environments = new ArrayList<>();
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name == null ? null : name.trim();
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public RepositoryConfig getRepository() {
+        return repository;
+    }
+
+    public void setRepository(RepositoryConfig repository) {
+        this.repository = repository;
+    }
+
+    public List<DevOpsEnvironment> getEnvironments() {
+        return environments;
+    }
+
+    public void setEnvironments(List<DevOpsEnvironment> environments) {
+        this.environments = environments;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\dto\response\ProjectResponse.java
+==============================
+
+package com.devops.projectservice.dto.response;
+
+import com.devops.projectservice.model.DevOpsEnvironment;
+import com.devops.projectservice.model.ProjectStatus;
+import com.devops.projectservice.model.RepositoryConfig;
+
+import java.time.Instant;
+import java.util.List;
+
+public class ProjectResponse {
+
+    private String id;
+    private String name;
+    private String description;
+    private String ownerEmail;
+    private ProjectStatus status;
+    private RepositoryConfig repository;
+    private List<DevOpsEnvironment> environments;
+    private Instant createdAt;
+    private Instant updatedAt;
+
+    public ProjectResponse(
+            String id,
+            String name,
+            String description,
+            String ownerEmail,
+            ProjectStatus status,
+            RepositoryConfig repository,
+            List<DevOpsEnvironment> environments,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.ownerEmail = ownerEmail;
+        this.status = status;
+        this.repository = repository;
+        this.environments = environments;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getOwnerEmail() {
+        return ownerEmail;
+    }
+
+    public ProjectStatus getStatus() {
+        return status;
+    }
+
+    public RepositoryConfig getRepository() {
+        return repository;
+    }
+
+    public List<DevOpsEnvironment> getEnvironments() {
+        return environments;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\exception\GlobalExceptionHandler.java
+==============================
+
+package com.devops.projectservice.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> validationErrors = new HashMap<>();
+
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            validationErrors.put(error.getField(), error.getDefaultMessage());
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Validation failed");
+        body.put("details", validationErrors);
+
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+    }
+
+    private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", status.value());
+        body.put("error", message);
+        return ResponseEntity.status(status).body(body);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\exception\ResourceNotFoundException.java
+==============================
+
+package com.devops.projectservice.exception;
+
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\model\DevOpsEnvironment.java
+==============================
+
+package com.devops.projectservice.model;
+
+public class DevOpsEnvironment {
+
+    private String name;
+    private EnvironmentType type;
+    private String baseUrl;
+    private boolean protectedEnvironment;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public EnvironmentType getType() {
+        return type;
+    }
+
+    public void setType(EnvironmentType type) {
+        this.type = type;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    public boolean isProtectedEnvironment() {
+        return protectedEnvironment;
+    }
+
+    public void setProtectedEnvironment(boolean protectedEnvironment) {
+        this.protectedEnvironment = protectedEnvironment;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\model\DevOpsProject.java
+==============================
+
+package com.devops.projectservice.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Document(collection = "projects")
+public class DevOpsProject {
+
+    @Id
+    private String id;
+
+    @Indexed
+    private String name;
+
+    private String description;
+    private String ownerEmail;
+
+    private ProjectStatus status = ProjectStatus.ACTIVE;
+
+    private RepositoryConfig repository;
+
+    private List<DevOpsEnvironment> environments = new ArrayList<>();
+
+    private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+        this.updatedAt = Instant.now();
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+        this.updatedAt = Instant.now();
+    }
+
+    public String getOwnerEmail() {
+        return ownerEmail;
+    }
+
+    public void setOwnerEmail(String ownerEmail) {
+        this.ownerEmail = ownerEmail;
+        this.updatedAt = Instant.now();
+    }
+
+    public ProjectStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ProjectStatus status) {
+        this.status = status;
+        this.updatedAt = Instant.now();
+    }
+
+    public RepositoryConfig getRepository() {
+        return repository;
+    }
+
+    public void setRepository(RepositoryConfig repository) {
+        this.repository = repository;
+        this.updatedAt = Instant.now();
+    }
+
+    public List<DevOpsEnvironment> getEnvironments() {
+        return environments;
+    }
+
+    public void setEnvironments(List<DevOpsEnvironment> environments) {
+        this.environments = environments;
+        this.updatedAt = Instant.now();
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\model\EnvironmentType.java
+==============================
+
+package com.devops.projectservice.model;
+
+public enum EnvironmentType {
+    DEVELOPMENT,
+    TESTING,
+    STAGING,
+    PRODUCTION
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\model\ProjectStatus.java
+==============================
+
+package com.devops.projectservice.model;
+
+public enum ProjectStatus {
+    ACTIVE,
+    PAUSED,
+    ARCHIVED
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\model\RepositoryConfig.java
+==============================
+
+package com.devops.projectservice.model;
+
+public class RepositoryConfig {
+
+    private String provider;
+    private String repositoryUrl;
+    private String defaultBranch;
+    private boolean webhookEnabled;
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public String getRepositoryUrl() {
+        return repositoryUrl;
+    }
+
+    public void setRepositoryUrl(String repositoryUrl) {
+        this.repositoryUrl = repositoryUrl;
+    }
+
+    public String getDefaultBranch() {
+        return defaultBranch;
+    }
+
+    public void setDefaultBranch(String defaultBranch) {
+        this.defaultBranch = defaultBranch;
+    }
+
+    public boolean isWebhookEnabled() {
+        return webhookEnabled;
+    }
+
+    public void setWebhookEnabled(boolean webhookEnabled) {
+        this.webhookEnabled = webhookEnabled;
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\repository\DevOpsProjectRepository.java
+==============================
+
+package com.devops.projectservice.repository;
+
+import com.devops.projectservice.model.DevOpsProject;
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import java.util.List;
+
+public interface DevOpsProjectRepository extends MongoRepository<DevOpsProject, String> {
+    List<DevOpsProject> findByOwnerEmail(String ownerEmail);
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\security\JwtAuthenticationFilter.java
+==============================
+
+package com.devops.projectservice.security;
+
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+
+    public JwtAuthenticationFilter(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        try {
+            String token = authHeader.substring(7);
+
+            if (jwtService.isTokenValid(token)) {
+                Claims claims = jwtService.extractClaims(token);
+                String email = claims.getSubject();
+
+                List<SimpleGrantedAuthority> authorities = jwtService.extractRoles(token)
+                        .stream()
+                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                        .toList();
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(email, null, authorities);
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception ignored) {
+            SecurityContextHolder.clearContext();
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\security\JwtService.java
+==============================
+
+package com.devops.projectservice.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+
+@Service
+public class JwtService {
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    public Claims extractClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public String extractUsername(String token) {
+        return extractClaims(token).getSubject();
+    }
+
+    public List<String> extractRoles(String token) {
+        Object roles = extractClaims(token).get("roles");
+
+        if (roles instanceof List<?> list) {
+            return list.stream().map(Object::toString).toList();
+        }
+
+        return List.of();
+    }
+
+    public boolean isTokenValid(String token) {
+        Date expiration = extractClaims(token).getExpiration();
+        return expiration.after(new Date());
+    }
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\java\com\devops\projectservice\service\ProjectService.java
+==============================
+
+package com.devops.projectservice.service;
+
+import com.devops.projectservice.dto.request.CreateProjectRequest;
+import com.devops.projectservice.dto.response.ProjectResponse;
+import com.devops.projectservice.exception.ResourceNotFoundException;
+import com.devops.projectservice.model.DevOpsProject;
+import com.devops.projectservice.repository.DevOpsProjectRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class ProjectService {
+
+    private final DevOpsProjectRepository projectRepository;
+
+    public ProjectService(DevOpsProjectRepository projectRepository) {
+        this.projectRepository = projectRepository;
+    }
+
+    public ProjectResponse create(CreateProjectRequest request, String ownerEmail) {
+        DevOpsProject project = new DevOpsProject();
+        project.setName(request.getName());
+        project.setDescription(request.getDescription());
+        project.setOwnerEmail(ownerEmail);
+        project.setRepository(request.getRepository());
+        project.setEnvironments(request.getEnvironments());
+
+        return toResponse(projectRepository.save(project));
+    }
+
+    public List<ProjectResponse> findMyProjects(String ownerEmail) {
+        return projectRepository.findByOwnerEmail(ownerEmail)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public ProjectResponse findById(String id) {
+        return projectRepository.findById(id)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+    }
+
+    public void delete(String id) {
+        if (!projectRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Project not found");
+        }
+
+        projectRepository.deleteById(id);
+    }
+
+    private ProjectResponse toResponse(DevOpsProject project) {
+        return new ProjectResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getOwnerEmail(),
+                project.getStatus(),
+                project.getRepository(),
+                project.getEnvironments(),
+                project.getCreatedAt(),
+                project.getUpdatedAt()
+        );
+    }
+}
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\main\resources\application.properties
+==============================
+
+spring.application.name=project-service
+server.port=8083
+
+spring.data.mongodb.uri=mongodb+srv://marwenjammazi171_db:marwenjammazi171@cluster0.izxexhd.mongodb.net/devops_project_db?retryWrites=true&w=majority&appName=Cluster0
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.instance.prefer-ip-address=true
+
+jwt.secret=DEVOPS_CONTROL_CENTER_SUPER_SECRET_KEY_2026_CHANGE_IN_PRODUCTION_1234567890_ABCDEFG
+
+management.endpoints.web.exposure.include=health,info
+management.endpoint.health.show-details=always
+
+logging.file.name=../../../logs/projects/project-service.log
+
+
+==============================
+FILE: C:\Users\PC\Desktop\devops\backend\java-services\project-service\src\test\java\com\devops\projectservice\ProjectServiceApplicationTests.java
+==============================
+
+package com.devops.projectservice;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class ProjectServiceApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}

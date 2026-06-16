@@ -1,0 +1,37 @@
+<div class="page">
+  <header>
+    <div>
+      <p class="eyebrow">CI/CD</p>
+      <h1>Pipelines</h1>
+      <span>Manage build, test, scan and deployment workflows.</span>
+    </div>
+    <a href="/dashboard">Back to dashboard</a>
+  </header>
+
+  <div class="alert" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <section class="grid">
+    <article class="card" *ngFor="let pipeline of pipelines">
+      <div>
+        <h3>{{ pipeline.name }}</h3>
+        <p>{{ pipeline.description }}</p>
+      </div>
+
+      <div class="meta">
+        <span>{{ pipeline.branch }}</span>
+        <span>{{ pipeline.status }}</span>
+      </div>
+
+      <button (click)="runPipeline(pipeline.id)">Run pipeline</button>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Recent runs</h2>
+    <div class="row" *ngFor="let run of runs">
+      <strong>{{ run.pipelineName }}</strong>
+      <span>{{ run.status }}</span>
+      <small>{{ run.commitSha }}</small>
+    </div>
+  </section>
+</div>
