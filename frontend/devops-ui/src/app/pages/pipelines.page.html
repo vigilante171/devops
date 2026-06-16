@@ -1,37 +1,157 @@
 <div class="page">
-  <header>
+  <header class="page-header">
     <div>
-      <p class="eyebrow">CI/CD</p>
+      <p class="eyebrow">CI/CD Automation</p>
       <h1>Pipelines</h1>
-      <span>Manage build, test, scan and deployment workflows.</span>
+      <span>Create, run and monitor CI/CD pipelines linked to your DevOps projects.</span>
     </div>
-    <a href="/dashboard">Back to dashboard</a>
+
+    <div class="header-actions">
+      <button class="secondary-btn" routerLink="/dashboard">Dashboard</button>
+      <button class="primary-btn" (click)="loadData()">Refresh</button>
+    </div>
   </header>
 
-  <div class="alert" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
 
-  <section class="grid">
-    <article class="card" *ngFor="let pipeline of pipelines">
-      <div>
-        <h3>{{ pipeline.name }}</h3>
-        <p>{{ pipeline.description }}</p>
+  <section class="layout">
+    <article class="form-card">
+      <div class="section-title">
+        <p class="eyebrow">New pipeline</p>
+        <h2>Create a pipeline</h2>
       </div>
 
-      <div class="meta">
-        <span>{{ pipeline.branch }}</span>
-        <span>{{ pipeline.status }}</span>
-      </div>
+      <form (ngSubmit)="createPipeline()">
+        <label>
+          Project
+          <select name="selectedProjectId" [(ngModel)]="selectedProjectId">
+            <option value="" disabled>Select project</option>
+            <option *ngFor="let project of projects" [value]="project.id">
+              {{ project.name }}
+            </option>
+          </select>
+        </label>
 
-      <button (click)="runPipeline(pipeline.id)">Run pipeline</button>
+        <label>
+          Pipeline name
+          <input name="name" [(ngModel)]="name" placeholder="backend-ci-cd" />
+        </label>
+
+        <label>
+          Description
+          <textarea name="description" [(ngModel)]="description" rows="3"></textarea>
+        </label>
+
+        <label>
+          Branch
+          <input name="branch" [(ngModel)]="branch" placeholder="main" />
+        </label>
+
+        <div class="section-title small">
+          <p class="eyebrow">Pipeline steps</p>
+          <h2>Commands</h2>
+        </div>
+
+        <label>
+          Build command
+          <input name="buildCommand" [(ngModel)]="buildCommand" />
+        </label>
+
+        <label>
+          Test command
+          <input name="testCommand" [(ngModel)]="testCommand" />
+        </label>
+
+        <label>
+          Security scan command
+          <input name="scanCommand" [(ngModel)]="scanCommand" />
+        </label>
+
+        <label>
+          Deploy command
+          <input name="deployCommand" [(ngModel)]="deployCommand" />
+        </label>
+
+        <button class="primary-btn full" type="submit" [disabled]="isCreating || projects.length === 0">
+          {{ isCreating ? 'Creating pipeline...' : 'Create pipeline' }}
+        </button>
+
+        <p class="hint" *ngIf="projects.length === 0">
+          No projects found. Create a project first from the Projects page.
+        </p>
+      </form>
     </article>
-  </section>
 
-  <section class="panel">
-    <h2>Recent runs</h2>
-    <div class="row" *ngFor="let run of runs">
-      <strong>{{ run.pipelineName }}</strong>
-      <span>{{ run.status }}</span>
-      <small>{{ run.commitSha }}</small>
-    </div>
+    <section class="pipelines-panel">
+      <div class="section-title">
+        <p class="eyebrow">Workspace</p>
+        <h2>Existing pipelines</h2>
+      </div>
+
+      <div class="loading" *ngIf="isLoading">Loading pipelines...</div>
+
+      <div class="empty" *ngIf="!isLoading && pipelines.length === 0">
+        No pipelines yet. Create your first pipeline from the form.
+      </div>
+
+      <div class="pipeline-grid" *ngIf="pipelines.length > 0">
+        <article class="pipeline-card" *ngFor="let pipeline of pipelines">
+          <div class="pipeline-top">
+            <div>
+              <h3>{{ pipeline.name }}</h3>
+              <p>{{ pipeline.description }}</p>
+            </div>
+
+            <span class="status">{{ pipeline.status }}</span>
+          </div>
+
+          <div class="repo-box">
+            <strong>{{ getProjectName(pipeline.projectId) }}</strong>
+            <span>Branch: {{ pipeline.branch }}</span>
+            <small>Owner: {{ pipeline.ownerEmail }}</small>
+          </div>
+
+          <div class="step-list">
+            <div *ngFor="let step of pipeline.steps">
+              <span>{{ step.orderIndex }}</span>
+              <strong>{{ step.name }}</strong>
+              <small>{{ step.command }}</small>
+            </div>
+          </div>
+
+          <div class="pipeline-actions">
+            <button class="primary-btn" (click)="runPipeline(pipeline)">Run pipeline</button>
+            <button class="danger-btn" (click)="deletePipeline(pipeline.id)">Delete</button>
+          </div>
+        </article>
+      </div>
+
+      <article class="runs-panel">
+        <div class="section-title">
+          <p class="eyebrow">Recent executions</p>
+          <h2>Pipeline runs</h2>
+        </div>
+
+        <div class="empty" *ngIf="runs.length === 0">
+          No pipeline runs yet.
+        </div>
+
+        <div class="run-row" *ngFor="let run of runs">
+          <div>
+            <strong>{{ run.pipelineName }}</strong>
+            <span>{{ run.branch }}  {{ run.commitSha || 'No commit' }}</span>
+          </div>
+
+          <small>{{ run.triggeredBy }}</small>
+
+          <em [class.success]="run.status === 'SUCCESS'"
+              [class.running]="run.status === 'RUNNING'"
+              [class.failed]="run.status === 'FAILED'">
+            {{ run.status }}
+          </em>
+        </div>
+      </article>
+    </section>
   </section>
 </div>
